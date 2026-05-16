@@ -47,7 +47,7 @@ class AtractivoTuristicoController extends Controller
             'direccion' => 'required|string', // Para tabla DireccionGoogle
             // latitud, longitud y place_id pueden ser opcionales dependiendo de tu front
             'fotos' => 'array', // Esperamos un arreglo de imágenes
-            'fotos.*' => 'image|mimes:jpeg,png,jpg|max:5120' // Máximo 5MB por foto
+            'fotos.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120' // Máximo 5MB por foto
         ]);
 
         if ($validador->fails()) {

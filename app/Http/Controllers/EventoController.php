@@ -46,7 +46,7 @@ class EventoController extends Controller
             'fecha_fin' => 'nullable|date',
             'url_foto' => 'nullable|image|mimes:jpeg,png,jpg|max:5120', // Validación del Flyer
             'fotos' => 'sometimes|array', // Validación de la galería
-            'fotos.*' => 'image|mimes:jpeg,png,jpg|max:5120'
+            'fotos.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120'
         ]);
 
         if ($validador->fails()) {

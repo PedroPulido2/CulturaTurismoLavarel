@@ -60,7 +60,7 @@ class HotelController extends Controller
 
             // Fotos
             'fotos' => 'sometimes|array',
-            'fotos.*' => 'image|mimes:jpeg,png,jpg|max:5120'
+            'fotos.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120'
         ]);
 
         if ($validador->fails()) {
