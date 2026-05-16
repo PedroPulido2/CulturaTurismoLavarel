@@ -10,6 +10,7 @@ use App\Http\Controllers\RestauranteController;
 use App\Http\Controllers\AgenciaController;
 use App\Http\Controllers\GuiaController;
 use App\Http\Controllers\ServiciosCulturalesController;
+use App\Http\Controllers\EventoController;
 
 // ==========================================
 // RUTAS DE AUTENTICACIÓN (LoginController)
@@ -77,6 +78,15 @@ Route::get('/culturalServices/{id}', [ServiciosCulturalesController::class, 'get
 Route::post('/culturalServices/register', [ServiciosCulturalesController::class, 'createServicioCultural']);
 Route::put('/culturalServices/{id}', [ServiciosCulturalesController::class, 'updateServicioCultural']);
 Route::delete('/culturalServices/{id}', [ServiciosCulturalesController::class, 'deleteServicioCultural']);
+// ==========================================
+// RUTAS DE Evento / event (EventoController)
+// ==========================================
+Route::get('/event', [EventoController::class, 'getAllEventos']);
+Route::get('/event/{id}', [EventoController::class, 'getEventoById']);
+Route::post('/event/register', [EventoController::class, 'createEvento']);
+Route::put('/event/{id}', [EventoController::class, 'updateEvento']);
+Route::delete('/event/{id}', [EventoController::class, 'deleteEvento']);
+
 // ==========================================
 // RUTAS DE DIAGNÓSTICO (Opcionales, para pruebas)
 // ==========================================
