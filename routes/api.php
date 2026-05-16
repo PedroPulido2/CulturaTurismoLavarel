@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\AtractivoTuristicoController;
+use App\Http\Controllers\HotelController;
 
 // ==========================================
 // RUTAS DE AUTENTICACIÓN (LoginController)
@@ -30,6 +31,15 @@ Route::get('/tourism/{id}', [AtractivoTuristicoController::class, 'getAtractivoB
 Route::post('/tourism/register', [AtractivoTuristicoController::class, 'createAtractivo']);
 Route::put('/tourism/{id}', [AtractivoTuristicoController::class, 'updateAtractivo']);
 Route::delete('/tourism/{id}', [AtractivoTuristicoController::class, 'deleteAtractivo']);
+
+// ==========================================
+// RUTAS DE Hotel / hotel (HotelController)
+// ==========================================
+Route::get('/hotel', [HotelController::class, 'getAllHoteles']);
+Route::get('/hotel/{id}', [HotelController::class, 'getHotelById']);
+Route::post('/hotel/register', [HotelController::class, 'createHotel']);
+Route::put('/hotel/{id}', [HotelController::class, 'updateHotel']);
+Route::delete('/hotel/{id}', [HotelController::class, 'deleteHotel']);
 
 // ==========================================
 // RUTAS DE DIAGNÓSTICO (Opcionales, para pruebas)
