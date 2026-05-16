@@ -6,10 +6,10 @@ use Illuminate\Http\Request;
 use App\Models\Login;
 use App\Models\Perfil;
 use Illuminate\Support\Facades\Hash;
+use Firebase\JWT\JWT;
 
 class LoginController extends Controller
 {
-
     public function login(Request $request)
     {
         $perfil = Perfil::where("correo", $request->correo)->first();
@@ -28,7 +28,7 @@ class LoginController extends Controller
             return response()->json(['success' => false, 'message' => 'Usuario inactivo o bloqueado. Contacte con soporte'], 403);
         }
 
-        //Verificacion de la contraseña encriptada
+        // Verificacion de la contraseña encriptada
         if (!Hash::check($request->password, $usuario->password)) {
             $usuario->intentos_fallidos += 1;
 
@@ -47,15 +47,28 @@ class LoginController extends Controller
             $usuario->save();
         }
 
-        //Actualizar la fecha de ultimo acceso
+        // Actualizar la fecha de ultimo acceso
         $usuario->ultimo_acceso = now();
         $usuario->save();
 
-        $usuario->perfil = $perfil;
+        // 2. CREACIÓN DEL PAYLOAD (Datos que viajan dentro del token)
+        $payload = [
+            'iss' => env('APP_URL'), // Emisor (Issuer)
+            'aud' => env('APP_URL'), // Audiencia (Audience)
+            'iat' => time(), // Emitido en (Issued at)
+            'exp' => time() + (60 * 60 * 24), // Expira en (Expiration time) - Aquí son 24 horas
+            // Datos útiles para el frontend (no pongas contraseñas aquí)
+            'sub' => $perfil->id_perfil,     // Identificador del sujeto
+            'user' => $perfil->toArray()
+        ];
+
+        // 3. FIRMA DEL TOKEN
+        $jwt = JWT::encode($payload, env('JWT_SECRET'), 'HS256');
+
         return response()->json([
             'success' => true,
-            'message' => 'Autenticación exitoso',
-            'data' => $usuario
+            'message' => 'Autenticación exitosa',
+            'token' => $jwt
         ]);
     }
 
