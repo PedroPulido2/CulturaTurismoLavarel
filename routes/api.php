@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\LoginController;
+use App\Http\Controllers\AtractivoTuristicoController;
 
 // ==========================================
 // RUTAS DE AUTENTICACIÓN (LoginController)
@@ -16,10 +17,19 @@ Route::post('/login/unlock/{id_perfil}', [LoginController::class, 'unlockUser'])
 // ==========================================
 Route::get('/profiles', [UserController::class, 'getAllProfiles']);
 Route::get('/profiles/e/{email}', [UserController::class, 'getProfileByEmail']);
-Route::get('/profiles/{id_perfil}',[UserController::class,'getProfileById']);
+Route::get('/profiles/{id_perfil}', [UserController::class, 'getProfileById']);
 Route::post('/profiles/registro', [UserController::class, 'createProfile']);
 Route::put('/profiles/{id_perfil}', [UserController::class, 'updateProfile']);
 Route::delete('/profiles/{id_perfil}', [UserController::class, 'deleteProfile']);
+
+// ==========================================
+// RUTAS DE ATRACTIVOS TURISTICOS / tourism (AtractivoTuristicoController)
+// ==========================================
+Route::get('/tourism', [AtractivoTuristicoController::class, 'getAllAtractivos']);
+Route::get('/tourism/{id}', [AtractivoTuristicoController::class, 'getAtractivoById']);
+Route::post('/tourism/register', [AtractivoTuristicoController::class, 'createAtractivo']);
+Route::put('/tourism/{id}', [AtractivoTuristicoController::class, 'updateAtractivo']);
+Route::delete('/tourism/{id}', [AtractivoTuristicoController::class, 'deleteAtractivo']);
 
 // ==========================================
 // RUTAS DE DIAGNÓSTICO (Opcionales, para pruebas)
@@ -32,7 +42,7 @@ Route::get('/debug-db', function () {
             FROM information_schema.tables 
             WHERE table_schema NOT IN ('information_schema', 'pg_catalog')
         ");
-        
+
         return response()->json([
             'mensaje' => 'Esto es lo que REALMENTE existe en Render:',
             'tablas_en_render' => $tablas
