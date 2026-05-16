@@ -7,6 +7,7 @@ use App\Http\Controllers\LoginController;
 use App\Http\Controllers\AtractivoTuristicoController;
 use App\Http\Controllers\HotelController;
 use App\Http\Controllers\RestauranteController;
+use App\Http\Controllers\AgenciaController;
 
 // ==========================================
 // RUTAS DE AUTENTICACIÓN (LoginController)
@@ -50,6 +51,14 @@ Route::get('/restaurant/{id}', [RestauranteController::class, 'getRestauranteByI
 Route::post('/restaurant/register', [RestauranteController::class, 'createRestaurante']);
 Route::put('/restaurant/{id}', [RestauranteController::class, 'updateRestaurante']);
 Route::delete('/restaurant/{id}', [RestauranteController::class, 'deleteRestaurante']);
+// ==========================================
+// RUTAS DE Agencias / agency (AgenciaController)
+// ==========================================
+Route::get('/agency', [AgenciaController::class, 'getAllAgencias']);
+Route::get('/agency/{id}', [AgenciaController::class, 'getAgenciaById']);
+Route::post('/agency/register', [AgenciaController::class, 'createAgencia']);
+Route::put('/agency/{id}', [AgenciaController::class, 'updateAgencia']);
+Route::delete('/agency/{id}', [AgenciaController::class, 'deleteAgencia']);
 // ==========================================
 // RUTAS DE DIAGNÓSTICO (Opcionales, para pruebas)
 // ==========================================
