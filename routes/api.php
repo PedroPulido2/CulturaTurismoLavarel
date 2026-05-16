@@ -9,6 +9,7 @@ use App\Http\Controllers\HotelController;
 use App\Http\Controllers\RestauranteController;
 use App\Http\Controllers\AgenciaController;
 use App\Http\Controllers\GuiaController;
+use App\Http\Controllers\ServiciosCulturalesController;
 
 // ==========================================
 // RUTAS DE AUTENTICACIÓN (LoginController)
@@ -68,6 +69,14 @@ Route::get('/guide/{id}', [GuiaController::class, 'getGuiaById']);
 Route::post('/guide/register', [GuiaController::class, 'createGuia']);
 Route::put('/guide/{id}', [GuiaController::class, 'updateGuia']);
 Route::delete('/guide/{id}', [GuiaController::class, 'deleteGuia']);
+// ==========================================
+// RUTAS DE ServiciosCulturales / culturalServices (ServiciosCulturalesController)
+// ==========================================
+Route::get('/culturalServices', [ServiciosCulturalesController::class, 'getAllServiciosCulturales']);
+Route::get('/culturalServices/{id}', [ServiciosCulturalesController::class, 'getServicioCulturalById']);
+Route::post('/culturalServices/register', [ServiciosCulturalesController::class, 'createServicioCultural']);
+Route::put('/culturalServices/{id}', [ServiciosCulturalesController::class, 'updateServicioCultural']);
+Route::delete('/culturalServices/{id}', [ServiciosCulturalesController::class, 'deleteServicioCultural']);
 // ==========================================
 // RUTAS DE DIAGNÓSTICO (Opcionales, para pruebas)
 // ==========================================
