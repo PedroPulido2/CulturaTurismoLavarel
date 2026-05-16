@@ -6,6 +6,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\AtractivoTuristicoController;
 use App\Http\Controllers\HotelController;
+use App\Http\Controllers\RestauranteController;
 
 // ==========================================
 // RUTAS DE AUTENTICACIÓN (LoginController)
@@ -41,6 +42,14 @@ Route::post('/hotel/register', [HotelController::class, 'createHotel']);
 Route::put('/hotel/{id}', [HotelController::class, 'updateHotel']);
 Route::delete('/hotel/{id}', [HotelController::class, 'deleteHotel']);
 
+// ==========================================
+// RUTAS DE Restaurante / restaurant (RestauranteController)
+// ==========================================
+Route::get('/restaurant', [RestauranteController::class, 'getAllRestaurantes']);
+Route::get('/restaurant/{id}', [RestauranteController::class, 'getRestauranteById']);
+Route::post('/restaurant/register', [RestauranteController::class, 'createRestaurante']);
+Route::put('/restaurant/{id}', [RestauranteController::class, 'updateRestaurante']);
+Route::delete('/restaurant/{id}', [RestauranteController::class, 'deleteRestaurante']);
 // ==========================================
 // RUTAS DE DIAGNÓSTICO (Opcionales, para pruebas)
 // ==========================================
