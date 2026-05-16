@@ -12,7 +12,7 @@ class Perfil extends Model
 
     public $timestamps = false;
 
-    //campos que permitimos llenar desde la API
+    //campos que se permiten llenar desde la API
     protected $fillable = [
         'id_perfil',
         'nombre',
@@ -23,5 +23,10 @@ class Perfil extends Model
         'telefono',
         'tipo_identificacion',
         'url_foto',
+        'role',
+        'perm_atractivos',
+        'perm_prestadores_servicios',
+        'perm_servicios_culturales',
+        'perm_agenda_eventos',
     ];
 }

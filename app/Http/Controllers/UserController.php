@@ -9,18 +9,25 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
+use App\Services\GoogleDriveService;
+
 class UserController extends Controller
 {
+    protected $driveService;
+
+    public function __construct(GoogleDriveService $driveService)
+    {
+        $this->driveService = $driveService;
+    }
+
     public function getAllProfiles()
     {
-        // Lógica para mostrar una lista de usuarios
         $perfiles = Perfil::all();
         return response()->json(['success' => true, 'data' => $perfiles]);
     }
 
     public function getProfileByEmail($email)
     {
-        // Lógica para mostrar un usuario específico por correo electrónico
         $perfil = Perfil::where('correo', $email)->first();
         if (!$perfil) {
             return response()->json(['success' => false, 'message' => 'Perfil no encontrado'], 404);
@@ -41,15 +48,8 @@ class UserController extends Controller
     public function createProfile(Request $request)
     {
         $reglas = [
-            'id_perfil' => [
-                'required', 
-                Rule::unique(Perfil::class, 'id_perfil')
-            ],
-            'correo' => [
-                'required', 
-                'email', 
-                Rule::unique(Perfil::class, 'correo')
-            ]
+            'id_perfil' => ['required', Rule::unique(Perfil::class, 'id_perfil')],
+            'correo' => ['required', 'email', Rule::unique(Perfil::class, 'correo')]
         ];
 
         $mensajes = [
@@ -59,7 +59,6 @@ class UserController extends Controller
 
         $validador = Validator::make($request->all(), $reglas, $mensajes);
 
-        // Si la validación falla, devolvemos un error 400 antes de intentar guardar nada
         if ($validador->fails()) {
             return response()->json([
                 'success' => false,
@@ -68,7 +67,17 @@ class UserController extends Controller
             ], 400);
         }
 
-        // Lógica para crear un nuevo usuario
+        $rutaFoto = null;
+
+        //Si se proporciona foto al momento de crear el usuario
+        if ($request->hasFile('url_foto')) {
+            $archivo = $request->file('url_foto');
+            $nombreArchivo = $request->id_perfil . '.' . $archivo->getClientOriginalExtension();
+            $idCarpetaDestino = env('ID_CARPETA_FOTOS_PERFILES');
+
+            $rutaFoto = $this->driveService->uploadToDrive($archivo, $nombreArchivo, $idCarpetaDestino);
+        }
+
         $perfil = Perfil::create([
             'id_perfil' => $request->id_perfil,
             'nombre' => $request->nombre,
@@ -78,15 +87,15 @@ class UserController extends Controller
             'genero' => $request->genero,
             'telefono' => $request->telefono,
             'tipo_identificacion' => $request->tipo_identificacion,
+            'url_foto' => $rutaFoto
         ]);
 
-        $login = Login::create([
+        Login::create([
             'id_perfil' => $perfil->id_perfil,
             'password' => Hash::make($request->password),
             'estado' => 'ACTIVO',
             'intentos_fallidos' => 0,
         ]);
-
 
         return response()->json([
             'success' => true,
@@ -95,12 +104,11 @@ class UserController extends Controller
         ], 201);
     }
 
-    public function updateProfile(Request $request, $id)
+    public function updateProfile(Request $request, $id_perfil)
     {
-        // Lógica para actualizar un usuario existente
-        $perfil = Perfil::find($id);
+        $perfilExist = Perfil::find($id_perfil);
 
-        if (!$perfil) {
+        if (!$perfilExist) {
             return response()->json([
                 'success' => false,
                 'message' => 'Perfil no encontrado',
@@ -108,17 +116,8 @@ class UserController extends Controller
         }
 
         $reglas = [
-            'id_perfil' => [
-                'required', 
-                // Valida que sea único, pero ignora el ID del perfil que estamos editando
-                Rule::unique(Perfil::class, 'id_perfil')->ignore($id, 'id_perfil')
-            ],
-            'correo' => [
-                'required', 
-                'email', 
-                // Valida que sea único, pero ignora el correo del perfil que estamos editando
-                Rule::unique(Perfil::class, 'correo')->ignore($id, 'id_perfil')
-            ]
+            'id_perfil' => ['required', Rule::unique(Perfil::class, 'id_perfil')->ignore($id_perfil, 'id_perfil')],
+            'correo' => ['required', 'email', Rule::unique(Perfil::class, 'correo')->ignore($id_perfil, 'id_perfil')]
         ];
 
         $mensajes = [
@@ -128,7 +127,6 @@ class UserController extends Controller
 
         $validador = Validator::make($request->all(), $reglas, $mensajes);
 
-
         if ($validador->fails()) {
             return response()->json([
                 'success' => false,
@@ -137,16 +135,45 @@ class UserController extends Controller
             ], 400);
         }
 
-        $perfil->update($request->all());
+        // LLenan los datos básicos del request (excepto la foto y password que requieren trato especial)
+        $perfilExist->fill($request->except(['url_foto', 'password']));
 
-        Login::where('id_perfil', $id)->update(['password' => Hash::make($request->password)]);
+        // CASO A: Se adjuntó una imagen nueva (Se elimina la anterior y se sube la nueva)        
+        if ($request->hasFile('url_foto')) {
+            // 1. Eliminar la anterior
+            if ($perfilExist->url_foto) {
+                $this->driveService->deleteFromDrive($perfilExist->url_foto);
+            }
+
+            // 2. Subir la nueva
+            $archivo = $request->file('url_foto');
+            $nombreArchivo = $perfilExist->id_perfil . '.' . $archivo->getClientOriginalExtension();
+            $idCarpetaDestino = env('ID_CARPETA_FOTOS_PERFILES');
+
+            // 3. Asignar la nueva URL al modelo
+            $perfilExist->url_foto = $this->driveService->uploadToDrive($archivo, $nombreArchivo, $idCarpetaDestino);
+
+            // CASO B: No hay imagen nueva, pero el id_perfil cambió en el request
+        } else if ($perfilExist->isDirty('id_perfil')) {
+            // Si el usuario ya tiene una foto asignada, se renombra en Drive
+            if ($perfilExist->url_foto) {
+                $this->driveService->changeFileName($perfilExist->id_perfil, $perfilExist->url_foto);
+            }
+        }
+
+        $perfilExist->save();
+
+        if ($request->filled('password')) {
+            Login::where('id_perfil', $perfilExist->id_perfil)->update([
+                'password' => Hash::make($request->password)
+            ]);
+        }
 
         return response()->json([
             'success' => true,
             'message' => 'Perfil actualizado exitosamente',
-            'data' => $perfil
+            'data' => $perfilExist
         ]);
-
     }
 
     public function deleteProfile($id)
@@ -158,6 +185,11 @@ class UserController extends Controller
                 'success' => false,
                 'message' => 'Perfil no encontrado'
             ], 404);
+        }
+
+        // Borrar la imagen de Drive
+        if ($perfil->url_foto) {
+            $this->driveService->deleteFromDrive($perfil->url_foto);
         }
 
         $perfil->delete();

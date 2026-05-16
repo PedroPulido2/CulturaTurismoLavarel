@@ -18,8 +18,8 @@ Route::get('/profiles', [UserController::class, 'getAllProfiles']);
 Route::get('/profiles/e/{email}', [UserController::class, 'getProfileByEmail']);
 Route::get('/profiles/{id_perfil}',[UserController::class,'getProfileById']);
 Route::post('/profiles/registro', [UserController::class, 'createProfile']);
-Route::put('/profiles/{id}', [UserController::class, 'updateProfile']);
-Route::delete('/profiles/{id}', [UserController::class, 'deleteProfile']);
+Route::put('/profiles/{id_perfil}', [UserController::class, 'updateProfile']);
+Route::delete('/profiles/{id_perfil}', [UserController::class, 'deleteProfile']);
 
 // ==========================================
 // RUTAS DE DIAGNÓSTICO (Opcionales, para pruebas)
