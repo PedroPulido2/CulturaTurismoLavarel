@@ -11,6 +11,7 @@ use App\Http\Controllers\AgenciaController;
 use App\Http\Controllers\GuiaController;
 use App\Http\Controllers\ServiciosCulturalesController;
 use App\Http\Controllers\EventoController;
+use App\Http\Controllers\PrestadoresPublicoController;
 
 // ==========================================
 // RUTAS DE AUTENTICACIÓN (LoginController)
@@ -86,6 +87,11 @@ Route::get('/event/{id}', [EventoController::class, 'getEventoById']);
 Route::post('/event/register', [EventoController::class, 'createEvento']);
 Route::put('/event/{id}', [EventoController::class, 'updateEvento']);
 Route::delete('/event/{id}', [EventoController::class, 'deleteEvento']);
+
+// ==========================================
+// RUTA DE PrestadoresPublicos / prestadores-turisticos (PrestadoresPublicoController)
+// ==========================================
+Route::get('/prestadores-turisticos', [PrestadoresPublicoController::class, 'getPrestadoresPublicos']);
 
 // ==========================================
 // RUTAS DE DIAGNÓSTICO (Opcionales, para pruebas)
