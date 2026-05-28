@@ -36,6 +36,7 @@ Route::get('/tourism/{id}', [AtractivoTuristicoController::class, 'getAtractivoB
 Route::post('/tourism/register', [AtractivoTuristicoController::class, 'createAtractivo']);
 Route::put('/tourism/{id}', [AtractivoTuristicoController::class, 'updateAtractivo']);
 Route::delete('/tourism/{id}', [AtractivoTuristicoController::class, 'deleteAtractivo']);
+Route::patch('/tourism/{id}/visibility', [AtractivoTuristicoController::class, 'updateVisibility']);
 
 // ==========================================
 // RUTAS DE Hotel / hotel (HotelController)

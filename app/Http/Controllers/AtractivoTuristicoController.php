@@ -223,6 +223,45 @@ class AtractivoTuristicoController extends Controller
         }
     }
 
+
+    public function updateVisibility(Request $request, $id)
+    {
+        $atractivo = AtractivoTuristico::find($id);
+
+        if (!$atractivo) {
+            return response()->json(['success' => false, 'message' => 'Atractivo no encontrado'], 404);
+        }
+
+        $validador = Validator::make($request->all(), [
+            'isvisible' => 'required|boolean'
+        ]);
+
+        if ($validador->fails()) {
+            return response()->json(['success' => false, 'errors' => $validador->errors()], 400);
+        }
+
+        try {
+            // Se actualiza únicamente el campo de visibilidad
+            $atractivo->isvisible = $request->isvisible;
+            $atractivo->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Visibilidad actualizada correctamente',
+                'data' => [
+                    'id_atractivo_turistico' => $atractivo->id_atractivo_turistico, 
+                    'isvisible' => $atractivo->isvisible
+                ]
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar visibilidad: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+
     public function deleteAtractivo($id)
     {
         $atractivo = AtractivoTuristico::with('fotos')->find($id);
