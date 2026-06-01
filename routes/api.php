@@ -46,6 +46,8 @@ Route::get('/hotel/{id}', [HotelController::class, 'getHotelById']);
 Route::post('/hotel/register', [HotelController::class, 'createHotel']);
 Route::put('/hotel/{id}', [HotelController::class, 'updateHotel']);
 Route::delete('/hotel/{id}', [HotelController::class, 'deleteHotel']);
+Route::patch('/hotel/{id}/visibility', [HotelController::class, 'updateVisibility']);
+
 
 // ==========================================
 // RUTAS DE Restaurante / restaurant (RestauranteController)
@@ -55,6 +57,8 @@ Route::get('/restaurant/{id}', [RestauranteController::class, 'getRestauranteByI
 Route::post('/restaurant/register', [RestauranteController::class, 'createRestaurante']);
 Route::put('/restaurant/{id}', [RestauranteController::class, 'updateRestaurante']);
 Route::delete('/restaurant/{id}', [RestauranteController::class, 'deleteRestaurante']);
+Route::patch('/restaurant/{id}/visibility', [RestauranteController::class, 'updateVisibility']);
+
 // ==========================================
 // RUTAS DE Agencias / agency (AgenciaController)
 // ==========================================
@@ -63,6 +67,8 @@ Route::get('/agency/{id}', [AgenciaController::class, 'getAgenciaById']);
 Route::post('/agency/register', [AgenciaController::class, 'createAgencia']);
 Route::put('/agency/{id}', [AgenciaController::class, 'updateAgencia']);
 Route::delete('/agency/{id}', [AgenciaController::class, 'deleteAgencia']);
+Route::patch('/agency/{id}/visibility', [AgenciaController::class, 'updateVisibility']);
+
 // ==========================================
 // RUTAS DE Guia / guide (GuiaController)
 // ==========================================

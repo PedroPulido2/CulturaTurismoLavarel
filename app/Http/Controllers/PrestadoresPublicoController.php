@@ -55,10 +55,13 @@ class PrestadoresPublicoController extends Controller
                         'id' => 'hotel_' . ($hotel->id ?? $hotel->id_hotel ?? rand(100,999)),
                         'name' => $hotel->nombre ?? 'Establecimiento sin nombre',
                         'category' => 'Hotel',
-                        'description' => $hotel->descripcion ?? 'Establecimiento hotelero autorizado en el municipio de Sogamoso.',
-                        'address' => ($hotel->direccion && isset($hotel->direccion->direccion)) ? $hotel->direccion->direccion : 'Sogamoso, Boyacá',
-                        'phone' => $hotel->celular ?? $hotel->correo ?? 'No disponible',
-                        'imageUrl' => $urlFoto
+                        'direccion' => ($hotel->id_direccion && isset($hotel->direccion->direccion)) ? $hotel->direccion->direccion : 'Sogamoso, Boyacá',
+                        'celular' => $hotel->celular ?? 'No disponible',
+                        'imageUrl' => $urlFoto,
+                        'facebook' => $hotel->facebook ?? null,
+                        'instagram' => $hotel->instagram ?? null,
+                        'correo' => $hotel->correo ?? null,
+                        'web' => $hotel->web ?? null
                     ];
                 }
             }
@@ -76,10 +79,13 @@ class PrestadoresPublicoController extends Controller
                         'id' => 'restaurante_' . ($restaurante->id ?? $restaurante->id_restaurante ?? rand(100,999)),
                         'name' => $restaurante->nombre ?? 'Establecimiento sin nombre',
                         'category' => 'Restaurante',
-                        'description' => $restaurante->descripcion ?? 'Disfruta de la gastronomía tradicional y moderna en Sogamoso.',
-                        'address' => ($restaurante->direccion && isset($restaurante->direccion->direccion)) ? $restaurante->direccion->direccion : 'Sogamoso, Boyacá',
-                        'phone' => $restaurante->celular ?? $restaurante->correo ?? 'No disponible',
-                        'imageUrl' => $urlFoto
+                        'direccion' => ($restaurante->id_direccion && isset($restaurante->direccion->direccion)) ? $restaurante->direccion->direccion : 'Sogamoso, Boyacá',
+                        'celular' => $restaurante->celular ?? $restaurante->correo ?? 'No disponible',
+                        'imageUrl' => $urlFoto,
+                        'facebook' => $restaurante->facebook ?? null,
+                        'instagram' => $restaurante->instagram ?? null,
+                        'correo' => $restaurante->correo ?? null,
+                        'web' => $restaurante->web ?? null
                     ];
                 }
             }
@@ -97,10 +103,13 @@ class PrestadoresPublicoController extends Controller
                         'id' => 'agencia_' . ($agencia->id ?? $agencia->id_agencia ?? rand(100,999)),
                         'name' => $agencia->nombre ?? 'Agencia sin nombre',
                         'category' => 'Agencia',
-                        'description' => 'Agencia de viajes y turismo operando de manera legal y certificada.',
-                        'address' => 'Sogamoso, Boyacá',
-                        'phone' => $agencia->celular ?? $agencia->correo ?? 'No disponible',
-                        'imageUrl' => $urlFoto
+                        'direccion' => 'Sogamoso, Boyacá',
+                        'celular' => $agencia->celular ?? $agencia->correo ?? 'No disponible',
+                        'imageUrl' => $urlFoto,
+                        'facebook' => $agencia->facebook ?? null,
+                        'instagram' => $agencia->instagram ?? null,
+                        'correo' => $agencia->correo ?? null,
+                        'web' => $agencia->web ?? null
                     ];
                 }
             }

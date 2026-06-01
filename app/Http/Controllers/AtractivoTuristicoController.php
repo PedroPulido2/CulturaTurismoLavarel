@@ -273,27 +273,24 @@ class AtractivoTuristicoController extends Controller
         try {
             DB::beginTransaction();
 
-            // 1. Borrar todas las fotos asociadas en Google Drive
             foreach ($atractivo->fotos as $foto) {
                 if ($foto->url_foto) {
                     $this->driveService->deleteFromDrive($foto->url_foto);
                 }
             }
-
-            // 2. Guardamos el ID de la dirección para borrarla después del atractivo
+            $atractivo->fotos()->delete();
             $idDireccion = $atractivo->id_direccion;
-
-            // 3. Borrar el Atractivo (Las fotos en DB se borran solas si estan ON DELETE CASCADE, 
             $atractivo->delete();
 
-            //4. Borrar la direccion asociada
-            DireccionGoogle::where('id_direccion', $idDireccion)->delete();
+            if ($idDireccion) {
+                DireccionGoogle::where('id_direccion', $idDireccion)->delete();
+            }
 
             DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Atractivo y sus imágenes eliminados correctamente'
+                'message' => 'Atractivo, dirección e imágenes eliminados correctamente en su totalidad.'
             ]);
 
         } catch (Exception $e) {
