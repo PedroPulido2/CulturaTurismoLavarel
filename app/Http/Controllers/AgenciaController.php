@@ -106,6 +106,42 @@ class AgenciaController extends Controller
         }
     }
 
+        public function updateVisibility(Request $request, $id)
+    {
+        $agencia = Agencia::find($id);
+
+        if (!$agencia) {
+            return response()->json(['success' => false, 'message' => 'agencia no encontrado'], 404);
+        }
+
+        $validador = Validator::make($request->all(), [
+            'isvisible' => 'required|boolean'
+        ]);
+
+        if ($validador->fails()) {
+            return response()->json(['success' => false, 'errors' => $validador->errors()], 400);
+        }
+
+        try {
+            // Se actualiza únicamente el campo de visibilidad
+            $agencia->isvisible = $request->isvisible;
+            $agencia->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Visibilidad actualizada correctamente',
+                'data' => [
+                    'id_agencia' => $agencia->id_agencia, 
+                    'isvisible' => $agencia->isvisible
+                ]
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar visibilidad: ' . $e->getMessage()
+            ], 500);
+        }
+    }
     public function updateAgencia(Request $request, $id)
     {
         $agencia = Agencia::with('fotos')->find($id);

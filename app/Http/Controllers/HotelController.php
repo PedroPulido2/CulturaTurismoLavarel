@@ -38,6 +38,44 @@ class HotelController extends Controller
         return response()->json(['success' => true, 'data' => $hotel]);
     }
 
+    public function updateVisibility(Request $request, $id)
+    {
+        $hotel = Hotel::find($id);
+
+        if (!$hotel) {
+            return response()->json(['success' => false, 'message' => 'hotel no encontrado'], 404);
+        }
+
+        $validador = Validator::make($request->all(), [
+            'isvisible' => 'required|boolean'
+        ]);
+
+        if ($validador->fails()) {
+            return response()->json(['success' => false, 'errors' => $validador->errors()], 400);
+        }
+
+        try {
+            // Se actualiza únicamente el campo de visibilidad
+            $hotel->isvisible = $request->isvisible;
+            $hotel->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Visibilidad actualizada correctamente',
+                'data' => [
+                    'id_hotel' => $hotel->id_hotel, 
+                    'isvisible' => $hotel->isvisible
+                ]
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar visibilidad: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+
     public function createHotel(Request $request)
     {
         // 1. Validación exhaustiva de los datos del Hotel
@@ -54,7 +92,7 @@ class HotelController extends Controller
             'petfriendly' => 'nullable|boolean',
             'acceso_discapacidad' => 'nullable|boolean',
             'parqueadero' => 'nullable|boolean',
-            'restaurante' => 'nullable|boolean',
+            'hotel' => 'nullable|boolean',
             'calificacion_salud' => 'nullable|boolean',
             'visita_inspeccion_turismo' => 'nullable|boolean',
 
@@ -94,7 +132,7 @@ class HotelController extends Controller
                 'petfriendly' => filter_var($request->petfriendly, FILTER_VALIDATE_BOOLEAN),
                 'acceso_discapacidad' => filter_var($request->acceso_discapacidad, FILTER_VALIDATE_BOOLEAN),
                 'parqueadero' => filter_var($request->parqueadero, FILTER_VALIDATE_BOOLEAN),
-                'restaurante' => filter_var($request->restaurante, FILTER_VALIDATE_BOOLEAN),
+                'hotel' => filter_var($request->hotel, FILTER_VALIDATE_BOOLEAN),
                 'calificacion_salud' => filter_var($request->calificacion_salud, FILTER_VALIDATE_BOOLEAN),
                 'visita_inspeccion_turismo' => filter_var($request->visita_inspeccion_turismo, FILTER_VALIDATE_BOOLEAN),
 
@@ -163,7 +201,7 @@ class HotelController extends Controller
             'petfriendly' => 'nullable|boolean',
             'acceso_discapacidad' => 'nullable|boolean',
             'parqueadero' => 'nullable|boolean',
-            'restaurante' => 'nullable|boolean',
+            'hotel' => 'nullable|boolean',
             'calificacion_salud' => 'nullable|boolean',
             'visita_inspeccion_turismo' => 'nullable|boolean',
 
@@ -210,7 +248,7 @@ class HotelController extends Controller
             ]);
 
             // Rutina para convertir booleanos de forma segura si vienen en el request
-            $camposBooleanos = ['petfriendly', 'acceso_discapacidad', 'parqueadero', 'restaurante', 'calificacion_salud', 'visita_inspeccion_turismo'];
+            $camposBooleanos = ['petfriendly', 'acceso_discapacidad', 'parqueadero', 'hotel', 'calificacion_salud', 'visita_inspeccion_turismo'];
             foreach ($camposBooleanos as $campo) {
                 if ($request->has($campo)) {
                     $datosHotel[$campo] = filter_var($request->$campo, FILTER_VALIDATE_BOOLEAN);
