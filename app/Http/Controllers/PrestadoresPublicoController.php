@@ -61,7 +61,8 @@ class PrestadoresPublicoController extends Controller
                         'facebook' => $hotel->facebook ?? null,
                         'instagram' => $hotel->instagram ?? null,
                         'correo' => $hotel->correo ?? null,
-                        'web' => $hotel->web ?? null
+                        'web' => $hotel->web ?? null,
+                        'isvisible' => $hotel->isvisible ?? false
                     ];
                 }
             }
@@ -85,7 +86,8 @@ class PrestadoresPublicoController extends Controller
                         'facebook' => $restaurante->facebook ?? null,
                         'instagram' => $restaurante->instagram ?? null,
                         'correo' => $restaurante->correo ?? null,
-                        'web' => $restaurante->web ?? null
+                        'web' => $restaurante->web ?? null,
+                        'isvisible' => $restaurante->isvisible ?? false
                     ];
                 }
             }
@@ -109,7 +111,8 @@ class PrestadoresPublicoController extends Controller
                         'facebook' => $agencia->facebook ?? null,
                         'instagram' => $agencia->instagram ?? null,
                         'correo' => $agencia->correo ?? null,
-                        'web' => $agencia->web ?? null
+                        'web' => $agencia->web ?? null,
+                        'isvisible' => $agencia->isvisible ?? false
                     ];
                 }
             }
