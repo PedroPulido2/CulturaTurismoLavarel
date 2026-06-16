@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class FotosHotel extends Model
 {
-    protected $table = 'culturetourismsog.fotoshotel';
+    protected $table = 'fotoshotel';
 
     protected $primaryKey = 'id_foto';
 

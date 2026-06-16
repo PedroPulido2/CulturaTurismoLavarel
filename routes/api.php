@@ -11,6 +11,7 @@ use App\Http\Controllers\AgenciaController;
 use App\Http\Controllers\GuiaController;
 use App\Http\Controllers\EventoController;
 use App\Http\Controllers\PrestadoresPublicoController;
+use App\Http\Controllers\ServicioCulturalController;
 
 // ==========================================
 // RUTAS DE AUTENTICACIÓN (LoginController)
@@ -91,6 +92,23 @@ Route::delete('/event/{id}', [EventoController::class, 'deleteEvento']);
 // RUTA DE PrestadoresPublicos / prestadores-turisticos (PrestadoresPublicoController)
 // ==========================================
 Route::get('/prestadores-turisticos', [PrestadoresPublicoController::class, 'getPrestadoresPublicos']);
+
+// ==========================================
+// RUTAS DE Servicios Culturales / cultural-services (ServicioCulturalController)
+// ==========================================
+Route::get('/cultural-services', [ServicioCulturalController::class, 'getAllServicios']);
+Route::get('/cultural-services/{id}', [ServicioCulturalController::class, 'getServicioById']);
+Route::post('/cultural-services/register', [ServicioCulturalController::class, 'createServicio']);
+Route::put('/cultural-services/{id}', [ServicioCulturalController::class, 'updateServicio']);
+Route::delete('/cultural-services/{id}', [ServicioCulturalController::class, 'deleteServicio']);
+
+Route::get('/areas-artisticas', [ServicioCulturalController::class, 'getAreasArtisticas']);
+Route::post('/areas-artisticas/register', [ServicioCulturalController::class, 'createAreasArtisticas']);
+Route::delete('/areas-artisticas/{id}', [ServicioCulturalController::class, 'deleteAreasArtisticas']);
+
+Route::get('/tipos-perfiles-sc', [ServicioCulturalController::class, 'getTiposPerfilesSc']);
+Route::post('/tipos-perfiles-sc/register', [ServicioCulturalController::class, 'createTiposPerfilesSc']);
+Route::delete('/tipos-perfiles-sc/{id}', [ServicioCulturalController::class, 'deleteTiposPerfilesSc']);
 
 // ==========================================
 // RUTAS DE DIAGNÓSTICO (Opcionales, para pruebas)

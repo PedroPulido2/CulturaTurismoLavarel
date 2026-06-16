@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Login extends Model
 {
-    protected $table = 'culturetourismsog.login';
+    protected $table = 'login';
 
     protected $primaryKey = 'id_login';
 

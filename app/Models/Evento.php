@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Evento extends Model
 {
 
-    protected $table = 'culturetourismsog.evento';
+    protected $table = 'evento';
 
     protected $primaryKey = 'id_evento';
 

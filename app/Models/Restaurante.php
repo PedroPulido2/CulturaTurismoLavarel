@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Restaurante extends Model
 {
-    protected $table = 'culturetourismsog.restaurante';
+    protected $table = 'restaurante';
 
     protected $primaryKey = 'id_restaurante';
 

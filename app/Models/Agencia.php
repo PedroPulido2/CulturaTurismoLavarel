@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Agencia extends Model
 {
-    protected $table = 'culturetourismsog.agencia';
+    protected $table = 'agencia';
 
     protected $primaryKey = 'id_agencia';
 

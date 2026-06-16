@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class DireccionGoogle extends Model
 {
-    protected $table = 'culturetourismsog.direcciongoogle';
+    protected $table = 'direcciongoogle';
 
     protected $primaryKey = 'id_direccion';
 
