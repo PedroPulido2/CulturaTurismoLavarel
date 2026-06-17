@@ -28,5 +28,6 @@ class Perfil extends Model
         'perm_prestadores_servicios',
         'perm_servicios_culturales',
         'perm_agenda_eventos',
+        'perm_dashboard',
     ];
 }
