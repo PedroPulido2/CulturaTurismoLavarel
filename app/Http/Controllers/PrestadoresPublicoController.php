@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\Hotel;
-use App\Models\Restaurante;
 use App\Models\Agencia;
-use Illuminate\Support\Facades\Log;
+use App\Models\Hotel;
+use App\Models\RedesSocial;
+use App\Models\Restaurante;
 use Exception;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class PrestadoresPublicoController extends Controller
 {
@@ -23,17 +24,35 @@ class PrestadoresPublicoController extends Controller
         // Si es un link de visualización de Drive, convertirlo a link directo (Raw Image)
         if (str_contains($rawUrl, 'drive.google.com/file/d/')) {
             preg_match('/\/d\/([a-zA-Z0-9_-]+)/', $rawUrl, $matches);
-            if (!empty($matches[1])) {
-                return 'https://drive.google.com/uc?export=view&id=' . $matches[1];
+            if (! empty($matches[1])) {
+                return 'https://drive.google.com/uc?export=view&id='.$matches[1];
             }
         }
 
         // Si es ruta interna de Laravel
-        if (!filter_var($rawUrl, FILTER_VALIDATE_URL)) {
+        if (! filter_var($rawUrl, FILTER_VALIDATE_URL)) {
             return url($rawUrl);
         }
 
         return $rawUrl;
+    }
+
+    /**
+     * Extrae la url de una red social por su nombre desde la relación pivote.
+     */
+    private function redSocialUrl($entidad, string $nombreRed)
+    {
+        if (! $entidad || ! $entidad->relationLoaded('redesSociales')) {
+            return null;
+        }
+
+        foreach ($entidad->redesSociales as $red) {
+            if (strtolower(trim($red->nombre ?? '')) === $nombreRed) {
+                return $red->pivot->url ?? null;
+            }
+        }
+
+        return null;
     }
 
     public function getPrestadoresPublicos(Request $request)
@@ -43,8 +62,8 @@ class PrestadoresPublicoController extends Controller
             $resultado = [];
 
             // 1. HOTELES
-            if (!$categoriaFiltro || $categoriaFiltro === 'all' || $categoriaFiltro === 'hoteles') {
-                $hoteles = Hotel::with(['direccion', 'fotos'])->get();
+            if (! $categoriaFiltro || $categoriaFiltro === 'all' || $categoriaFiltro === 'hoteles') {
+                $hoteles = Hotel::with(['direccion', 'fotos', 'redesSociales'])->get();
                 foreach ($hoteles as $hotel) {
                     $urlFoto = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&auto=format&fit=crop&q=60'; // Fallback
                     if ($hotel->fotos && $hotel->fotos->count() > 0) {
@@ -52,24 +71,24 @@ class PrestadoresPublicoController extends Controller
                     }
 
                     $resultado[] = [
-                        'id' => 'hotel_' . ($hotel->id ?? $hotel->id_hotel ?? rand(100,999)),
+                        'id' => 'hotel_'.($hotel->id ?? $hotel->id_hotel ?? rand(100, 999)),
                         'name' => $hotel->nombre ?? 'Establecimiento sin nombre',
                         'category' => 'Hotel',
                         'direccion' => ($hotel->id_direccion && isset($hotel->direccion->direccion)) ? $hotel->direccion->direccion : 'Sogamoso, Boyacá',
                         'celular' => $hotel->celular ?? 'No disponible',
                         'imageUrl' => $urlFoto,
-                        'facebook' => $hotel->facebook ?? null,
-                        'instagram' => $hotel->instagram ?? null,
+                        'facebook' => $this->redSocialUrl($hotel, 'facebook'),
+                        'instagram' => $this->redSocialUrl($hotel, 'instagram'),
                         'correo' => $hotel->correo ?? null,
-                        'web' => $hotel->web ?? null,
-                        'isvisible' => $hotel->isvisible ?? false
+                        'web' => null,
+                        'isvisible' => $hotel->is_visible ?? false,
                     ];
                 }
             }
 
             // 2. RESTAURANTES
-            if (!$categoriaFiltro || $categoriaFiltro === 'all' || $categoriaFiltro === 'restaurantes') {
-                $restaurantes = Restaurante::with(['direccion', 'fotos'])->get();
+            if (! $categoriaFiltro || $categoriaFiltro === 'all' || $categoriaFiltro === 'restaurantes') {
+                $restaurantes = Restaurante::with(['direccion', 'fotos', 'redesSociales'])->get();
                 foreach ($restaurantes as $restaurante) {
                     $urlFoto = 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&auto=format&fit=crop&q=60';
                     if ($restaurante->fotos && $restaurante->fotos->count() > 0) {
@@ -77,24 +96,24 @@ class PrestadoresPublicoController extends Controller
                     }
 
                     $resultado[] = [
-                        'id' => 'restaurante_' . ($restaurante->id ?? $restaurante->id_restaurante ?? rand(100,999)),
+                        'id' => 'restaurante_'.($restaurante->id ?? $restaurante->id_restaurante ?? rand(100, 999)),
                         'name' => $restaurante->nombre ?? 'Establecimiento sin nombre',
                         'category' => 'Restaurante',
                         'direccion' => ($restaurante->id_direccion && isset($restaurante->direccion->direccion)) ? $restaurante->direccion->direccion : 'Sogamoso, Boyacá',
                         'celular' => $restaurante->celular ?? $restaurante->correo ?? 'No disponible',
                         'imageUrl' => $urlFoto,
-                        'facebook' => $restaurante->facebook ?? null,
-                        'instagram' => $restaurante->instagram ?? null,
+                        'facebook' => $this->redSocialUrl($restaurante, 'facebook'),
+                        'instagram' => $this->redSocialUrl($restaurante, 'instagram'),
                         'correo' => $restaurante->correo ?? null,
-                        'web' => $restaurante->web ?? null,
-                        'isvisible' => $restaurante->isvisible ?? false
+                        'web' => null,
+                        'isvisible' => $restaurante->is_visible ?? false,
                     ];
                 }
             }
 
             // 3. AGENCIAS
-            if (!$categoriaFiltro || $categoriaFiltro === 'all' || $categoriaFiltro === 'agencias') {
-                $agencias = Agencia::with(['fotos'])->get();
+            if (! $categoriaFiltro || $categoriaFiltro === 'all' || $categoriaFiltro === 'agencias') {
+                $agencias = Agencia::with(['fotos', 'redesSociales'])->get();
                 foreach ($agencias as $agencia) {
                     $urlFoto = 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&auto=format&fit=crop&q=60';
                     if ($agencia->fotos && $agencia->fotos->count() > 0) {
@@ -102,17 +121,17 @@ class PrestadoresPublicoController extends Controller
                     }
 
                     $resultado[] = [
-                        'id' => 'agencia_' . ($agencia->id ?? $agencia->id_agencia ?? rand(100,999)),
+                        'id' => 'agencia_'.($agencia->id ?? $agencia->id_agencia ?? rand(100, 999)),
                         'name' => $agencia->nombre ?? 'Agencia sin nombre',
                         'category' => 'Agencia',
                         'direccion' => 'Sogamoso, Boyacá',
                         'celular' => $agencia->celular ?? $agencia->correo ?? 'No disponible',
                         'imageUrl' => $urlFoto,
-                        'facebook' => $agencia->facebook ?? null,
-                        'instagram' => $agencia->instagram ?? null,
+                        'facebook' => $this->redSocialUrl($agencia, 'facebook'),
+                        'instagram' => $this->redSocialUrl($agencia, 'instagram'),
                         'correo' => $agencia->correo ?? null,
-                        'web' => $agencia->web ?? null,
-                        'isvisible' => $agencia->isvisible ?? false
+                        'web' => null,
+                        'isvisible' => $agencia->is_visible ?? false,
                     ];
                 }
             }
@@ -120,14 +139,31 @@ class PrestadoresPublicoController extends Controller
             return response()->json([
                 'success' => true,
                 'count' => count($resultado),
-                'data' => $resultado
+                'data' => $resultado,
             ], 200);
-
         } catch (Exception $e) {
-            Log::error('Error crítico en API de Prestadores: ' . $e->getMessage());
+            Log::error('Error crítico en API de Prestadores: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error interno procesando prestadores: ' . $e->getMessage()
+                'message' => 'Error interno procesando prestadores: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Catálogo de redes sociales disponibles (para los pivotes *_redes_sociales).
+     */
+    public function getRedesSociales()
+    {
+        try {
+            return response()->json(['success' => true, 'data' => RedesSocial::all()], 200);
+        } catch (Exception $e) {
+            Log::error('Error obteniendo redes sociales: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error interno obteniendo redes sociales: '.$e->getMessage(),
             ], 500);
         }
     }

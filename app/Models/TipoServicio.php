@@ -4,11 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class TipoPerfilSc extends Model
+class TipoServicio extends Model
 {
-    protected $table = 'tipos_perfiles_sc';
+    protected $table = 'culturayturismo.tipo_servicio';
 
-    protected $primaryKey = 'id';
+    protected $primaryKey = 'id_tipo_servicio';
 
     public $timestamps = false;
 
@@ -18,6 +18,6 @@ class TipoPerfilSc extends Model
 
     public function serviciosCulturales()
     {
-        return $this->hasMany(ServicioCultural::class, 'id_tipo_perfil_sc');
+        return $this->hasMany(ServicioCultural::class, 'id_tipo_servicio');
     }
 }

@@ -6,9 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class AreaArtistica extends Model
 {
-    protected $table = 'areas_artisticas';
+    protected $table = 'culturayturismo.area_artistica';
 
-    protected $primaryKey = 'id';
+    protected $primaryKey = 'id_area_artistica';
 
     public $timestamps = false;
 

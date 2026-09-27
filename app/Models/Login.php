@@ -6,23 +6,23 @@ use Illuminate\Database\Eloquent\Model;
 
 class Login extends Model
 {
-    protected $table = 'login';
+    protected $table = 'culturayturismo.login';
 
     protected $primaryKey = 'id_login';
 
     public $timestamps = false;
 
-    //campos que permitimos llenar desde la API
+    // campos que permitimos llenar desde la API
     protected $fillable = [
-        'id_perfil',
+        'id_usuario',
         'password',
         'estado',
         'intentos_fallidos',
-        'ultimo_acceso'
+        'ultimo_acceso',
     ];
 
-    public function perfil()
+    public function usuario()
     {
-        return $this->belongsTo(Perfil::class, 'id_perfil');
+        return $this->belongsTo(Usuario::class, 'id_usuario');
     }
 }

@@ -6,18 +6,34 @@ use Illuminate\Database\Eloquent\Model;
 
 class Hotel extends Model
 {
-    protected $table = 'hotel';
+    protected $table = 'culturayturismo.hotel';
 
     protected $primaryKey = 'id_hotel';
 
+    // PK alfanumérica asignada por el cliente (VARCHAR(15)), no autoincremental
+    public $incrementing = false;
+
+    protected $keyType = 'string';
+
     public $timestamps = false;
 
-    //campos que se permiten llenar desde la API
+    protected $casts = [
+        'petfriendly' => 'boolean',
+        'acceso_discapacidad' => 'boolean',
+        'parqueadero' => 'boolean',
+        'restaurante' => 'boolean',
+        'visita_inspeccion_turismo' => 'boolean',
+        'is_visible' => 'boolean',
+        'calificacion_salud' => 'decimal:2',
+    ];
+
+    // campos que se permiten llenar desde la API
     protected $fillable = [
+        'id_hotel',
         'nombre',
+        'rnt',
         'celular',
         'correo',
-        'rnt',
         'nombre_contacto',
         'n_habitaciones_totales',
         'n_habitaciones_simples',
@@ -29,12 +45,9 @@ class Hotel extends Model
         'restaurante',
         'calificacion_salud',
         'visita_inspeccion_turismo',
-        'instagram',
-        'facebook',
-        'whatsapp',
-        'web',
-        'observaciones',
-        'id_direccion'
+        'observacion',
+        'is_visible',
+        'id_direccion',
     ];
 
     // Relación con la dirección (Un hotel pertenece a una dirección)
@@ -43,9 +56,20 @@ class Hotel extends Model
         return $this->belongsTo(DireccionGoogle::class, 'id_direccion');
     }
 
-    // Relación con las fotos (Un hotel tiene muchas fotos)
+    // Relación con las fotos (tabla unificada fotos)
     public function fotos()
     {
-        return $this->hasMany(FotosHotel::class, 'id_hotel');
+        return $this->hasMany(Foto::class, 'id_hotel');
+    }
+
+    // Redes sociales del hotel (pivote hotel_redes_sociales con columna url)
+    public function redesSociales()
+    {
+        return $this->belongsToMany(
+            RedesSocial::class,
+            'culturayturismo.hotel_redes_sociales',
+            'id_hotel',
+            'id_redes_sociales'
+        )->withPivot('url');
     }
 }

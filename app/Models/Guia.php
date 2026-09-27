@@ -6,25 +6,57 @@ use Illuminate\Database\Eloquent\Model;
 
 class Guia extends Model
 {
-    protected $table = 'guia';
+    protected $table = 'culturayturismo.guia';
 
     protected $primaryKey = 'id_guia';
 
+    // PK alfanumérica asignada por el cliente (VARCHAR(15)), no autoincremental
+    public $incrementing = false;
+
+    protected $keyType = 'string';
+
     public $timestamps = false;
 
+    protected $casts = [
+        'is_visible' => 'boolean',
+    ];
+
     protected $fillable = [
-        'n_cedula',
+        'id_guia',
         'nombre',
+        'n_cedula',
+        'rnt',
         'celular',
         'correo',
-        'rnt',
-        'años_experiencia',
+        'num_tarjeta_profesional',
+        'rango_anios_experiencia',
         'idiomas',
-        'especialidad',
         'principales_atractivos',
-        'disponibilidad_habitual',
-        'competencias_adicionales',
-        'publico_tiene_experiencia',
-        'asociacion'
+        'asociacion',
+        'is_visible',
+        'id_especialidad',
+        'id_disponibilidad',
+        'id_competencias',
+        'id_tipo_publico',
     ];
+
+    public function especialidad()
+    {
+        return $this->belongsTo(Especialidad::class, 'id_especialidad');
+    }
+
+    public function disponibilidad()
+    {
+        return $this->belongsTo(Disponibilidad::class, 'id_disponibilidad');
+    }
+
+    public function competencia()
+    {
+        return $this->belongsTo(Competencia::class, 'id_competencias');
+    }
+
+    public function tipoPublico()
+    {
+        return $this->belongsTo(TipoPublico::class, 'id_tipo_publico');
+    }
 }

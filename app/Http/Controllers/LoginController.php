@@ -2,26 +2,26 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Login;
-use App\Models\Perfil;
-use Illuminate\Support\Facades\Hash;
+use App\Models\Usuario;
 use Firebase\JWT\JWT;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
 class LoginController extends Controller
 {
     public function login(Request $request)
     {
-        $perfil = Perfil::where("correo", $request->correo)->first();
+        $usuario_data = Usuario::where('correo', $request->correo)->first();
 
-        if (!$perfil) {
+        if (! $usuario_data) {
             return response()->json(['success' => false, 'message' => 'Usuario o contraseña incorrectos'], 401);
         }
-    
-        $usuario = Login::where('id_perfil', $perfil->id_perfil)->first();
 
-        if (!$usuario) {
-            return response()->json(['success'=> false, 'message'=> 'Error de integridad. Credenciales no encontradas'],403); 
+        $usuario = Login::where('id_usuario', $usuario_data->id_usuario)->first();
+
+        if (! $usuario) {
+            return response()->json(['success' => false, 'message' => 'Error de integridad. Credenciales no encontradas'], 403);
         }
 
         if ($usuario->estado !== 'ACTIVO') {
@@ -29,7 +29,7 @@ class LoginController extends Controller
         }
 
         // Verificacion de la contraseña encriptada
-        if (!Hash::check($request->password, $usuario->password)) {
+        if (! Hash::check($request->password, $usuario->password)) {
             $usuario->intentos_fallidos += 1;
 
             if ($usuario->intentos_fallidos >= 5) {
@@ -39,6 +39,7 @@ class LoginController extends Controller
                 return response()->json(['success' => false, 'message' => 'Cuenta Bloqueada por multiples intentos fallidos'], 403);
             }
             $usuario->save();
+
             return response()->json(['success' => false, 'message' => 'Usuario o contraseña incorrectos'], 401);
         }
 
@@ -58,8 +59,8 @@ class LoginController extends Controller
             'iat' => time(), // Emitido en (Issued at)
             'exp' => time() + (60 * 60 * 24), // Expira en (Expiration time) - Aquí son 24 horas
             // Datos útiles para el frontend (no pongas contraseñas aquí)
-            'sub' => $perfil->id_perfil,     // Identificador del sujeto
-            'user' => $perfil->toArray()
+            'sub' => $usuario_data->id_usuario,     // Identificador del sujeto
+            'user' => $usuario_data->toArray(),
         ];
 
         // 3. FIRMA DEL TOKEN
@@ -68,16 +69,16 @@ class LoginController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Autenticación exitosa',
-            'token' => $jwt
+            'token' => $jwt,
         ]);
     }
 
-    public function unlockUser(Request $request, $id_perfil)
+    public function unlockUser(Request $request, $id_usuario)
     {
-        $usuario = Login::where('id_perfil', $id_perfil)->first();
+        $usuario = Login::where('id_usuario', $id_usuario)->first();
 
-        if (!$usuario) {
-            return response()->json(['success' => false, 'message' => 'Perfil no encontrado'], 404);
+        if (! $usuario) {
+            return response()->json(['success' => false, 'message' => 'Usuario no encontrado'], 404);
         }
 
         $usuario->estado = 'ACTIVO';

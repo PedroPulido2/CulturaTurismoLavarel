@@ -2,17 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Http\Controllers\Concerns\SyncRedesSociales;
 use App\Models\AtractivoTuristico;
 use App\Models\DireccionGoogle;
-use App\Models\FotosAtractivo;
+use App\Models\Foto;
 use App\Services\GoogleDriveService;
+use Exception;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Exception;
+use Illuminate\Validation\Rule;
 
 class AtractivoTuristicoController extends Controller
 {
+    use SyncRedesSociales;
+
     protected $driveService;
 
     public function __construct(GoogleDriveService $driveService)
@@ -22,16 +26,17 @@ class AtractivoTuristicoController extends Controller
 
     public function getAllAtractivos()
     {
-        // todos los atractivos con su dirección y sus fotos
-        $atractivos = AtractivoTuristico::with(['direccion', 'fotos'])->get();
+        // todos los atractivos con su dirección, fotos y redes sociales
+        $atractivos = AtractivoTuristico::with(['direccion', 'fotos', 'redesSociales'])->get();
+
         return response()->json(['success' => true, 'data' => $atractivos]);
     }
 
     public function getAtractivoById($id)
     {
-        $atractivo = AtractivoTuristico::with(['direccion', 'fotos'])->find($id);
+        $atractivo = AtractivoTuristico::with(['direccion', 'fotos', 'redesSociales'])->find($id);
 
-        if (!$atractivo) {
+        if (! $atractivo) {
             return response()->json(['success' => false, 'message' => 'Atractivo turístico no encontrado'], 404);
         }
 
@@ -40,15 +45,22 @@ class AtractivoTuristicoController extends Controller
 
     public function createAtractivo(Request $request)
     {
-        //Validacion de datos incluyendo el array de fotos
-        $validador = Validator::make($request->all(), [
+        // Validacion de datos incluyendo el array de fotos y redes sociales
+        $validador = Validator::make($request->all(), array_merge([
+            'id_atractivo_turistico' => ['required', 'string', 'max:15', Rule::unique(AtractivoTuristico::class, 'id_atractivo_turistico')],
             'nombre' => 'required|string|max:255',
             'tipo' => 'required|string|max:255',
-            'direccion' => 'required|string', // Para tabla DireccionGoogle
-            // latitud, longitud y place_id pueden ser opcionales dependiendo de tu front
+            'descripcion' => 'nullable|string',
+            'telefono' => 'nullable|integer',
+            'horario' => 'nullable|string',
+            'precio' => 'nullable|string',
+            'is_visible' => 'nullable|boolean',
+            'direccion' => 'required|string',
+            'latitud' => 'nullable|numeric',
+            'longitud' => 'nullable|numeric',
             'fotos' => 'array', // Esperamos un arreglo de imágenes
-            'fotos.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120' // Máximo 5MB por foto
-        ]);
+            'fotos.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120', // Máximo 5MB por foto
+        ], $this->reglasRedesSociales()));
 
         if ($validador->fails()) {
             return response()->json(['success' => false, 'errors' => $validador->errors()], 400);
@@ -57,88 +69,99 @@ class AtractivoTuristicoController extends Controller
         try {
             DB::beginTransaction();
 
-            //Crear la direccion primero para obtener el id_direccion
+            // Crear la direccion primero para obtener el id_direccion
             $direccion = DireccionGoogle::create([
                 'direccion' => $request->direccion,
                 'latitud' => $request->latitud,
                 'longitud' => $request->longitud,
-                'google_place_id' => $request->google_place_id,
             ]);
 
-
-            //Crear el atractivo turistico amarrado a la direccion
+            // Crear el atractivo turistico amarrado a la direccion
             $atractivo = AtractivoTuristico::create([
+                'id_atractivo_turistico' => $request->id_atractivo_turistico,
                 'nombre' => $request->nombre,
                 'tipo' => $request->tipo,
                 'descripcion' => $request->descripcion,
                 'telefono' => $request->telefono,
-                'instagram' => $request->instagram,
-                'facebook' => $request->facebook,
-                'whatsapp' => $request->whatsapp,
-                'web' => $request->web,
                 'horario' => $request->horario,
                 'precio' => $request->precio,
-                'id_direccion' => $direccion->id_direccion
+                'is_visible' => filter_var($request->is_visible, FILTER_VALIDATE_BOOLEAN),
+                'id_direccion' => $direccion->id_direccion,
             ]);
 
-            //Procesar y subir multiples fotos
+            // Redes sociales del atractivo (pivote atractivo_redes_sociales)
+            $this->syncRedesSociales(
+                'culturayturismo.atractivo_redes_sociales',
+                'id_atractivo_turistico',
+                $atractivo->id_atractivo_turistico,
+                $request->input('redes_sociales')
+            );
+
+            // Procesar y subir multiples fotos
             if ($request->hasFile('fotos')) {
                 $idCarpetaDestino = env('ID_CARPETA_FOTOS_ATRACTIVOS');
                 $archivos = $request->file('fotos');
 
                 foreach ($archivos as $index => $archivo) {
-                    //nombre unico nombre ID_ATRACTIVO.extension
-                    $nombreArchivo = $atractivo->id_atractivo_turistico . '_' . ($index + 1) . '.' . $archivo->getClientOriginalExtension();
+                    // nombre unico ID_ATRACTIVO_n.extension
+                    $nombreArchivo = $atractivo->id_atractivo_turistico.'_'.($index + 1).'.'.$archivo->getClientOriginalExtension();
 
-                    //sube al drive usando el service
+                    // sube al drive usando el service
                     $rutaFoto = $this->driveService->uploadToDrive($archivo, $nombreArchivo, $idCarpetaDestino);
 
-                    //Guarda el registro en la base de datos
-                    FotosAtractivo::create([
+                    // Guarda el registro en la base de datos (la primera foto queda como portada)
+                    Foto::create([
                         'url_foto' => $rutaFoto,
+                        'is_portada' => $index === 0,
                         'id_atractivo_turistico' => $atractivo->id_atractivo_turistico,
                     ]);
                 }
             }
 
-            //Si todo salio bien se confirma la transaccion
             DB::commit();
 
-            //Cargan las relaciones para devolver el objeto completo en la respuesta
-            $atractivo->load(['direccion', 'fotos']);
+            // Cargan las relaciones para devolver el objeto completo en la respuesta
+            $atractivo->load(['direccion', 'fotos', 'redesSociales']);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Atractivo turistico y ubicacion guardados exitosamente',
-                'data' => $atractivo
+                'data' => $atractivo,
             ], 201);
-
         } catch (Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error al guardar el atractivo turístico: ' . $e->getMessage()
+                'message' => 'Error al guardar el atractivo turístico: '.$e->getMessage(),
             ], 500);
         }
     }
 
     public function updateAtractivo(Request $request, $id)
     {
-        $atractivo = AtractivoTuristico::with(['direccion', 'fotos'])->find($id);
+        $atractivo = AtractivoTuristico::with(['direccion', 'fotos', 'redesSociales'])->find($id);
 
-        if (!$atractivo) {
+        if (! $atractivo) {
             return response()->json(['success' => false, 'message' => 'Atractivo turístico no encontrado'], 404);
         }
 
-        $validador = Validator::make($request->all(), [
+        $validador = Validator::make($request->all(), array_merge([
             'nombre' => 'sometimes|string|max:255',
             'tipo' => 'sometimes|string|max:255',
+            'descripcion' => 'nullable|string',
+            'telefono' => 'nullable|integer',
+            'horario' => 'nullable|string',
+            'precio' => 'nullable|string',
+            'is_visible' => 'nullable|boolean',
             'direccion' => 'sometimes|string',
+            'latitud' => 'nullable|numeric',
+            'longitud' => 'nullable|numeric',
             'nuevas_fotos' => 'sometimes|array',
             'nuevas_fotos.*' => 'image|mimes:jpeg,png,jpg|max:5120',
             'fotos_a_eliminar' => 'sometimes|array', // Array con los IDs de las fotos a borrar
-            'fotos_a_eliminar.*' => 'integer'
-        ]);
+            'fotos_a_eliminar.*' => 'integer',
+        ], $this->reglasRedesSociales()));
 
         if ($validador->fails()) {
             return response()->json(['success' => false, 'errors' => $validador->errors()], 400);
@@ -147,33 +170,44 @@ class AtractivoTuristicoController extends Controller
         try {
             DB::beginTransaction();
 
-            //Actualizar la Dirección si se enviaron datos
-            if ($request->hasAny(['direccion', 'latitud', 'longitud', 'google_place_id'])) {
+            // Actualizar la Dirección si se enviaron datos
+            if ($request->hasAny(['direccion', 'latitud', 'longitud'])) {
                 $atractivo->direccion->update($request->only([
                     'direccion',
                     'latitud',
                     'longitud',
-                    'google_place_id'
                 ]));
             }
 
-            //Actualizar los datos del Atractivo Turístico
-            $atractivo->update($request->only([
+            // Actualizar los datos del Atractivo Turístico
+            $datos = $request->only([
                 'nombre',
                 'tipo',
                 'descripcion',
                 'telefono',
-                'instagram',
-                'facebook',
-                'whatsapp',
-                'web',
                 'horario',
-                'precio'
-            ]));
+                'precio',
+            ]);
 
-            //Eliminar fotos específicas (de Drive y de la DB)
+            if ($request->has('is_visible')) {
+                $datos['is_visible'] = filter_var($request->is_visible, FILTER_VALIDATE_BOOLEAN);
+            }
+
+            $atractivo->update($datos);
+
+            // Reemplazar redes sociales si se enviaron
+            if ($request->has('redes_sociales')) {
+                $this->syncRedesSociales(
+                    'culturayturismo.atractivo_redes_sociales',
+                    'id_atractivo_turistico',
+                    $id,
+                    $request->input('redes_sociales')
+                );
+            }
+
+            // Eliminar fotos específicas (de Drive y de la DB)
             if ($request->has('fotos_a_eliminar')) {
-                $fotosAEliminar = FotosAtractivo::whereIn('id_foto', $request->fotos_a_eliminar)
+                $fotosAEliminar = Foto::whereIn('id_foto', $request->fotos_a_eliminar)
                     ->where('id_atractivo_turistico', $id)
                     ->get();
 
@@ -185,20 +219,21 @@ class AtractivoTuristicoController extends Controller
                 }
             }
 
-            //Subir y guardar las nuevas fotos
+            // Subir y guardar las nuevas fotos
             if ($request->hasFile('nuevas_fotos')) {
                 $idCarpetaDestino = env('ID_CARPETA_FOTOS_ATRACTIVOS');
                 $archivos = $request->file('nuevas_fotos');
 
                 foreach ($archivos as $index => $archivo) {
-                    // Se utiliza time() en el nombre para evitar sobreescribir archivos 
-                    $nombreArchivo = $id . '_' . time() . '_' . $index . '.' . $archivo->getClientOriginalExtension();
+                    // Se utiliza time() en el nombre para evitar sobreescribir archivos
+                    $nombreArchivo = $id.'_'.time().'_'.$index.'.'.$archivo->getClientOriginalExtension();
 
                     $rutaFoto = $this->driveService->uploadToDrive($archivo, $nombreArchivo, $idCarpetaDestino);
 
-                    FotosAtractivo::create([
+                    Foto::create([
                         'url_foto' => $rutaFoto,
-                        'id_atractivo_turistico' => $id
+                        'is_portada' => false,
+                        'id_atractivo_turistico' => $id,
                     ]);
                 }
             }
@@ -206,34 +241,33 @@ class AtractivoTuristicoController extends Controller
             DB::commit();
 
             // Recargan las relaciones para devolver la información actualizada
-            $atractivo->load(['direccion', 'fotos']);
+            $atractivo->load(['direccion', 'fotos', 'redesSociales']);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Atractivo actualizado correctamente',
-                'data' => $atractivo
+                'data' => $atractivo,
             ]);
-
         } catch (Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error al actualizar: ' . $e->getMessage()
+                'message' => 'Error al actualizar: '.$e->getMessage(),
             ], 500);
         }
     }
-
 
     public function updateVisibility(Request $request, $id)
     {
         $atractivo = AtractivoTuristico::find($id);
 
-        if (!$atractivo) {
+        if (! $atractivo) {
             return response()->json(['success' => false, 'message' => 'Atractivo no encontrado'], 404);
         }
 
         $validador = Validator::make($request->all(), [
-            'isvisible' => 'required|boolean'
+            'is_visible' => 'required|boolean',
         ]);
 
         if ($validador->fails()) {
@@ -242,31 +276,30 @@ class AtractivoTuristicoController extends Controller
 
         try {
             // Se actualiza únicamente el campo de visibilidad
-            $atractivo->isvisible = $request->isvisible;
+            $atractivo->is_visible = $request->is_visible;
             $atractivo->save();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Visibilidad actualizada correctamente',
                 'data' => [
-                    'id_atractivo_turistico' => $atractivo->id_atractivo_turistico, 
-                    'isvisible' => $atractivo->isvisible
-                ]
+                    'id_atractivo_turistico' => $atractivo->id_atractivo_turistico,
+                    'is_visible' => $atractivo->is_visible,
+                ],
             ]);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error al actualizar visibilidad: ' . $e->getMessage()
+                'message' => 'Error al actualizar visibilidad: '.$e->getMessage(),
             ], 500);
         }
     }
-
 
     public function deleteAtractivo($id)
     {
         $atractivo = AtractivoTuristico::with('fotos')->find($id);
 
-        if (!$atractivo) {
+        if (! $atractivo) {
             return response()->json(['success' => false, 'message' => 'Atractivo no encontrado'], 404);
         }
 
@@ -280,6 +313,7 @@ class AtractivoTuristicoController extends Controller
             }
             $atractivo->fotos()->delete();
             $idDireccion = $atractivo->id_direccion;
+            // Las redes sociales se eliminan en cascada
             $atractivo->delete();
 
             if ($idDireccion) {
@@ -290,14 +324,14 @@ class AtractivoTuristicoController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Atractivo, dirección e imágenes eliminados correctamente en su totalidad.'
+                'message' => 'Atractivo, dirección e imágenes eliminados correctamente en su totalidad.',
             ]);
-
         } catch (Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error al eliminar: ' . $e->getMessage()
+                'message' => 'Error al eliminar: '.$e->getMessage(),
             ], 500);
         }
     }

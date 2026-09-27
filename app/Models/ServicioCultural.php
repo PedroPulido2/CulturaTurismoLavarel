@@ -6,41 +6,46 @@ use Illuminate\Database\Eloquent\Model;
 
 class ServicioCultural extends Model
 {
-    protected $table = 'servicios_culturales';
+    protected $table = 'culturayturismo.servicio_cultural';
 
-    protected $primaryKey = 'id';
+    protected $primaryKey = 'id_servicio_cultural';
+
+    // PK entera asignada por el cliente (sin identity en la BD), no autoincremental
+    public $incrementing = false;
 
     public $timestamps = false;
 
     protected $fillable = [
-        'id_area_artistica',
-        'id_tipo_perfil_sc',
-        'nombre_artistico',
+        'id_servicio_cultural',
+        'nombre',
         'telefono',
         'correo',
         'contacto',
-        'url_foto',
         'biografia',
-        'tipo_servicio',
-        'publico_objetivo',
         'reconocimientos',
-        'correo_publicar',
-        'telefono_publicar',
-        'sitio_web',
-        'instagram',
-        'facebook',
-        'youtube',
-        'tiktok',
-        'otra_red',
+        'id_tipo_servicio',
+        'id_publico_dirigido',
+        'id_area_artistica',
     ];
+
+    public function tipoServicio()
+    {
+        return $this->belongsTo(TipoServicio::class, 'id_tipo_servicio');
+    }
+
+    public function publicoDirigido()
+    {
+        return $this->belongsTo(PublicoDirigido::class, 'id_publico_dirigido');
+    }
 
     public function areaArtistica()
     {
         return $this->belongsTo(AreaArtistica::class, 'id_area_artistica');
     }
 
-    public function tipoPerfilSc()
+    // Galería de fotos del servicio (tabla unificada fotos)
+    public function fotos()
     {
-        return $this->belongsTo(TipoPerfilSc::class, 'id_tipo_perfil_sc');
+        return $this->hasMany(Foto::class, 'id_servicio_cultural');
     }
 }

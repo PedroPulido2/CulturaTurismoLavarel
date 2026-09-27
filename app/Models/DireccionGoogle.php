@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class DireccionGoogle extends Model
 {
-    protected $table = 'direcciongoogle';
+    protected $table = 'culturayturismo.direccion_google';
 
     protected $primaryKey = 'id_direccion';
 
@@ -16,6 +16,5 @@ class DireccionGoogle extends Model
         'direccion',
         'latitud',
         'longitud',
-        'google_place_id',
     ];
 }

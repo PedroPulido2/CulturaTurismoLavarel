@@ -2,14 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\Evento;
 use App\Models\DireccionGoogle;
-use App\Models\FotosEvento;
+use App\Models\Evento;
+use App\Models\Foto;
 use App\Services\GoogleDriveService;
+use Exception;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Exception;
+use Illuminate\Validation\Rule;
 
 class EventoController extends Controller
 {
@@ -23,6 +24,7 @@ class EventoController extends Controller
     public function getAllEventos()
     {
         $eventos = Evento::with(['direccion', 'fotos'])->get();
+
         return response()->json(['success' => true, 'data' => $eventos]);
     }
 
@@ -30,7 +32,7 @@ class EventoController extends Controller
     {
         $evento = Evento::with(['direccion', 'fotos'])->find($id);
 
-        if (!$evento) {
+        if (! $evento) {
             return response()->json(['success' => false, 'message' => 'Evento no encontrado'], 404);
         }
 
@@ -40,13 +42,24 @@ class EventoController extends Controller
     public function createEvento(Request $request)
     {
         $validador = Validator::make($request->all(), [
-            'nombre' => 'required|string|max:255',
-            'direccion' => 'required|string',
+            'codigo' => ['nullable', 'string', 'max:15', Rule::unique(Evento::class, 'codigo')],
+            'nombre' => 'required|string|max:80',
+            'descripcion' => 'nullable|string',
+            'tipo' => 'nullable|string|max:50',
+            'organizador' => 'nullable|string|max:45',
+            'contacto' => 'nullable|integer',
             'fecha_inicio' => 'nullable|date',
             'fecha_fin' => 'nullable|date',
-            'url_foto' => 'nullable|image|mimes:jpeg,png,jpg|max:5120', // Validación del Flyer
-            'fotos' => 'sometimes|array', // Validación de la galería
-            'fotos.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120'
+            'asistentes_estimados' => 'nullable|integer',
+            'asistentes_reales' => 'nullable|integer',
+            'impacto_economico' => 'nullable|numeric',
+            'observaciones' => 'nullable|string',
+            'is_visible' => 'nullable|boolean',
+            'direccion' => 'required|string',
+            'latitud' => 'nullable|numeric',
+            'longitud' => 'nullable|numeric',
+            'fotos' => 'sometimes|array', // Galería del evento
+            'fotos.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
         if ($validador->fails()) {
@@ -56,53 +69,51 @@ class EventoController extends Controller
         try {
             DB::beginTransaction();
 
-            //Crear ubicación
+            // Crear ubicación
             $direccion = DireccionGoogle::create([
                 'direccion' => $request->direccion,
                 'latitud' => $request->latitud,
                 'longitud' => $request->longitud,
-                'google_place_id' => $request->google_place_id
             ]);
 
             $idCarpetaDestino = env('ID_CARPETA_FOTOS_EVENTOS');
 
-            //Crear el evento base temporalmente para obtener el id_evento
-            $evento = Evento::create([
-                'nombre' => $request->nombre,
-                'descripcion' => $request->descripcion,
-                'tipo' => $request->tipo,
-                'organizador' => $request->organizador,
-                'contacto' => $request->contacto,
-                'fecha_inicio' => $request->fecha_inicio,
-                'fecha_fin' => $request->fecha_fin,
-                'asistentes_estimados' => $request->asistentes_estimados,
-                'impacto_economico' => $request->impacto_economico,
-                'estado' => $request->estado,
-                'observaciones' => $request->observaciones,
-                'id_direccion' => $direccion->id_direccion,
-                'url_foto' => null
+            // Crear el evento para obtener el id_evento
+            $datos = $request->only([
+                'codigo',
+                'nombre',
+                'descripcion',
+                'tipo',
+                'organizador',
+                'contacto',
+                'fecha_inicio',
+                'fecha_fin',
+                'asistentes_estimados',
+                'asistentes_reales',
+                'impacto_economico',
+                'observaciones',
             ]);
 
-            //Subir el Flyer si existe y actualizar el campo
-            if ($request->hasFile('url_foto')) {
-                $flyer = $request->file('url_foto');
-                $nombreFlyer = 'evento_flyer_' . $evento->id_evento . '.' . $flyer->getClientOriginalExtension();
-
-                $evento->url_foto = $this->driveService->uploadToDrive($flyer, $nombreFlyer, $idCarpetaDestino);
-                $evento->save();
+            if ($request->has('is_visible')) {
+                $datos['is_visible'] = filter_var($request->is_visible, FILTER_VALIDATE_BOOLEAN);
             }
 
-            //Subir la galería de fotos del evento realizado
+            $datos['id_direccion'] = $direccion->id_direccion;
+
+            $evento = Evento::create($datos);
+
+            // Subir la galería de fotos del evento
             if ($request->hasFile('fotos')) {
                 $archivos = $request->file('fotos');
 
                 foreach ($archivos as $index => $archivo) {
-                    $nombreArchivo = 'evento_galeria_' . $evento->id_evento . '_' . time() . '_' . $index . '.' . $archivo->getClientOriginalExtension();
+                    $nombreArchivo = 'evento_galeria_'.$evento->id_evento.'_'.time().'_'.$index.'.'.$archivo->getClientOriginalExtension();
                     $rutaFoto = $this->driveService->uploadToDrive($archivo, $nombreArchivo, $idCarpetaDestino);
 
-                    FotosEvento::create([
+                    Foto::create([
                         'url_foto' => $rutaFoto,
-                        'id_evento' => $evento->id_evento
+                        'is_portada' => $index === 0,
+                        'id_evento' => $evento->id_evento,
                     ]);
                 }
             }
@@ -113,14 +124,14 @@ class EventoController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Evento registrado exitosamente',
-                'data' => $evento
+                'data' => $evento,
             ], 201);
-
         } catch (Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error al registrar el evento: ' . $e->getMessage()
+                'message' => 'Error al registrar el evento: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -129,19 +140,28 @@ class EventoController extends Controller
     {
         $evento = Evento::with(['direccion', 'fotos'])->find($id);
 
-        if (!$evento) {
+        if (! $evento) {
             return response()->json(['success' => false, 'message' => 'Evento no encontrado'], 404);
         }
 
         $validador = Validator::make($request->all(), [
-            'nombre' => 'sometimes|string|max:255',
+            'codigo' => ['nullable', 'string', 'max:15', Rule::unique(Evento::class, 'codigo')->ignore($id, 'id_evento')],
+            'nombre' => 'sometimes|string|max:80',
+            'descripcion' => 'nullable|string',
+            'tipo' => 'nullable|string|max:50',
+            'organizador' => 'nullable|string|max:45',
+            'contacto' => 'nullable|integer',
             'fecha_inicio' => 'nullable|date',
             'fecha_fin' => 'nullable|date',
-            'url_foto' => 'nullable|image|mimes:jpeg,png,jpg|max:5120', // Nuevo flyer
+            'asistentes_estimados' => 'nullable|integer',
+            'asistentes_reales' => 'nullable|integer',
+            'impacto_economico' => 'nullable|numeric',
+            'observaciones' => 'nullable|string',
+            'is_visible' => 'nullable|boolean',
             'nuevas_fotos' => 'sometimes|array', // Nuevas fotos para la galería
             'nuevas_fotos.*' => 'image|mimes:jpeg,png,jpg|max:5120',
             'fotos_a_eliminar' => 'sometimes|array', // IDs de fotos de la galería a borrar
-            'fotos_a_eliminar.*' => 'integer'
+            'fotos_a_eliminar.*' => 'integer',
         ]);
 
         if ($validador->fails()) {
@@ -151,18 +171,18 @@ class EventoController extends Controller
         try {
             DB::beginTransaction();
 
-            //Actualizar Dirección
-            if ($request->hasAny(['direccion', 'latitud', 'longitud', 'google_place_id'])) {
+            // Actualizar Dirección
+            if ($request->hasAny(['direccion', 'latitud', 'longitud'])) {
                 $evento->direccion->update($request->only([
                     'direccion',
                     'latitud',
                     'longitud',
-                    'google_place_id'
                 ]));
             }
 
-            //Actualizar datos básicos
-            $evento->update($request->only([
+            // Actualizar datos básicos
+            $datos = $request->only([
+                'codigo',
                 'nombre',
                 'descripcion',
                 'tipo',
@@ -171,29 +191,22 @@ class EventoController extends Controller
                 'fecha_inicio',
                 'fecha_fin',
                 'asistentes_estimados',
+                'asistentes_reales',
                 'impacto_economico',
-                'estado',
-                'observaciones'
-            ]));
+                'observaciones',
+            ]);
+
+            if ($request->has('is_visible')) {
+                $datos['is_visible'] = filter_var($request->is_visible, FILTER_VALIDATE_BOOLEAN);
+            }
+
+            $evento->update($datos);
 
             $idCarpetaDestino = env('ID_CARPETA_FOTOS_EVENTOS');
 
-            // Procesar cambio de Flyer (url_foto)
-            if ($request->hasFile('url_foto')) {
-                // Eliminar flyer anterior si existe
-                if ($evento->url_foto) {
-                    $this->driveService->deleteFromDrive($evento->url_foto);
-                }
-
-                $flyer = $request->file('url_foto');
-                $nombreFlyer = 'evento_flyer_' . $id . '_' . time() . '.' . $flyer->getClientOriginalExtension();
-                $evento->url_foto = $this->driveService->uploadToDrive($flyer, $nombreFlyer, $idCarpetaDestino);
-                $evento->save();
-            }
-
-            //Eliminar fotos de la galería especificadas
+            // Eliminar fotos de la galería especificadas
             if ($request->has('fotos_a_eliminar')) {
-                $fotosAEliminar = FotosEvento::whereIn('id_foto', $request->fotos_a_eliminar)
+                $fotosAEliminar = Foto::whereIn('id_foto', $request->fotos_a_eliminar)
                     ->where('id_evento', $id)
                     ->get();
 
@@ -205,17 +218,18 @@ class EventoController extends Controller
                 }
             }
 
-            //Agregar nuevas fotos a la galería
+            // Agregar nuevas fotos a la galería
             if ($request->hasFile('nuevas_fotos')) {
                 $archivos = $request->file('nuevas_fotos');
 
                 foreach ($archivos as $index => $archivo) {
-                    $nombreArchivo = 'evento_galeria_' . $id . '_' . time() . '_' . $index . '.' . $archivo->getClientOriginalExtension();
+                    $nombreArchivo = 'evento_galeria_'.$id.'_'.time().'_'.$index.'.'.$archivo->getClientOriginalExtension();
                     $rutaFoto = $this->driveService->uploadToDrive($archivo, $nombreArchivo, $idCarpetaDestino);
 
-                    FotosEvento::create([
+                    Foto::create([
                         'url_foto' => $rutaFoto,
-                        'id_evento' => $id
+                        'is_portada' => false,
+                        'id_evento' => $id,
                     ]);
                 }
             }
@@ -226,14 +240,14 @@ class EventoController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Evento actualizado correctamente',
-                'data' => $evento
+                'data' => $evento,
             ]);
-
         } catch (Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error al actualizar el evento: ' . $e->getMessage()
+                'message' => 'Error al actualizar el evento: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -242,19 +256,14 @@ class EventoController extends Controller
     {
         $evento = Evento::with('fotos')->find($id);
 
-        if (!$evento) {
+        if (! $evento) {
             return response()->json(['success' => false, 'message' => 'Evento no encontrado'], 404);
         }
 
         try {
             DB::beginTransaction();
 
-            //Eliminar el Flyer de Drive
-            if ($evento->url_foto) {
-                $this->driveService->deleteFromDrive($evento->url_foto);
-            }
-
-            //Eliminar todas las fotos de la galería de Drive
+            // Eliminar todas las fotos de la galería de Drive
             foreach ($evento->fotos as $foto) {
                 if ($foto->url_foto) {
                     $this->driveService->deleteFromDrive($foto->url_foto);
@@ -263,24 +272,24 @@ class EventoController extends Controller
 
             $idDireccion = $evento->id_direccion;
 
-            //El borrado del evento disparará el CASCADE en FotosEvento
+            // El borrado del evento disparará el CASCADE en fotos
             $evento->delete();
 
-            //Limpiar la dirección asociada
+            // Limpiar la dirección asociada
             DireccionGoogle::where('id_direccion', $idDireccion)->delete();
 
             DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Evento y todos sus archivos asociados eliminados correctamente'
+                'message' => 'Evento y todos sus archivos asociados eliminados correctamente',
             ]);
-
         } catch (Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error al eliminar el evento: ' . $e->getMessage()
+                'message' => 'Error al eliminar el evento: '.$e->getMessage(),
             ], 500);
         }
     }

@@ -1,33 +1,42 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\DB;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\LoginController;
-use App\Http\Controllers\AtractivoTuristicoController;
-use App\Http\Controllers\HotelController;
-use App\Http\Controllers\RestauranteController;
 use App\Http\Controllers\AgenciaController;
-use App\Http\Controllers\GuiaController;
+use App\Http\Controllers\AtractivoTuristicoController;
 use App\Http\Controllers\EventoController;
+use App\Http\Controllers\GuiaController;
+use App\Http\Controllers\HotelController;
+use App\Http\Controllers\LoginController;
 use App\Http\Controllers\PrestadoresPublicoController;
+use App\Http\Controllers\RestauranteController;
 use App\Http\Controllers\ServicioCulturalController;
+use App\Http\Controllers\UserController;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 
 // ==========================================
 // RUTAS DE AUTENTICACIÓN (LoginController)
 // ==========================================
 Route::post('/login', [LoginController::class, 'login']);
-Route::post('/login/unlock/{id_perfil}', [LoginController::class, 'unlockUser']);
+Route::post('/login/unlock/{id_usuario}', [LoginController::class, 'unlockUser']);
 
 // ==========================================
 // RUTAS DE USUARIOS / PROFILES (UserController)
 // ==========================================
 Route::get('/profiles', [UserController::class, 'getAllProfiles']);
 Route::get('/profiles/e/{email}', [UserController::class, 'getProfileByEmail']);
-Route::get('/profiles/{id_perfil}', [UserController::class, 'getProfileById']);
+Route::get('/profiles/{id_usuario}', [UserController::class, 'getProfileById']);
 Route::post('/profiles/registro', [UserController::class, 'createProfile']);
-Route::put('/profiles/{id_perfil}', [UserController::class, 'updateProfile']);
-Route::delete('/profiles/{id_perfil}', [UserController::class, 'deleteProfile']);
+Route::put('/profiles/{id_usuario}', [UserController::class, 'updateProfile']);
+Route::delete('/profiles/{id_usuario}', [UserController::class, 'deleteProfile']);
+
+// ==========================================
+// ROLES, MÓDULOS Y PERMISOS (UserController)
+// ==========================================
+Route::get('/roles', [UserController::class, 'getRoles']);
+Route::get('/modulos', [UserController::class, 'getModulos']);
+Route::get('/profiles/{id_usuario}/modulos', [UserController::class, 'getUserModulos']);
+Route::post('/profiles/{id_usuario}/modulos', [UserController::class, 'assignModulos'])->middleware('superadmin');
+Route::delete('/profiles/{id_usuario}/modulos/{id_modulo}', [UserController::class, 'revokeModulo'])->middleware('superadmin');
 
 // ==========================================
 // RUTAS DE ATRACTIVOS TURISTICOS / tourism (AtractivoTuristicoController)
@@ -48,7 +57,6 @@ Route::post('/hotel/register', [HotelController::class, 'createHotel']);
 Route::put('/hotel/{id}', [HotelController::class, 'updateHotel']);
 Route::delete('/hotel/{id}', [HotelController::class, 'deleteHotel']);
 Route::patch('/hotel/{id}/visibility', [HotelController::class, 'updateVisibility']);
-
 
 // ==========================================
 // RUTAS DE Restaurante / restaurant (RestauranteController)
@@ -89,9 +97,37 @@ Route::put('/event/{id}', [EventoController::class, 'updateEvento']);
 Route::delete('/event/{id}', [EventoController::class, 'deleteEvento']);
 
 // ==========================================
+// CATÁLOGOS DE Restaurante / Guia / Agencia
+// ==========================================
+Route::get('/tipos-cocina', [RestauranteController::class, 'getTiposCocina']);
+Route::post('/tipos-cocina/register', [RestauranteController::class, 'createTipoCocina']);
+Route::delete('/tipos-cocina/{id}', [RestauranteController::class, 'deleteTipoCocina']);
+
+Route::get('/tipos-agencia', [AgenciaController::class, 'getTiposAgencia']);
+Route::post('/tipos-agencia/register', [AgenciaController::class, 'createTipoAgencia']);
+Route::delete('/tipos-agencia/{id}', [AgenciaController::class, 'deleteTipoAgencia']);
+
+Route::get('/especialidades', [GuiaController::class, 'getEspecialidades']);
+Route::post('/especialidades/register', [GuiaController::class, 'createEspecialidad']);
+Route::delete('/especialidades/{id}', [GuiaController::class, 'deleteEspecialidad']);
+
+Route::get('/disponibilidades', [GuiaController::class, 'getDisponibilidades']);
+Route::post('/disponibilidades/register', [GuiaController::class, 'createDisponibilidad']);
+Route::delete('/disponibilidades/{id}', [GuiaController::class, 'deleteDisponibilidad']);
+
+Route::get('/competencias', [GuiaController::class, 'getCompetencias']);
+Route::post('/competencias/register', [GuiaController::class, 'createCompetencia']);
+Route::delete('/competencias/{id}', [GuiaController::class, 'deleteCompetencia']);
+
+Route::get('/tipos-publico', [GuiaController::class, 'getTiposPublico']);
+Route::post('/tipos-publico/register', [GuiaController::class, 'createTipoPublico']);
+Route::delete('/tipos-publico/{id}', [GuiaController::class, 'deleteTipoPublico']);
+
+// ==========================================
 // RUTA DE PrestadoresPublicos / prestadores-turisticos (PrestadoresPublicoController)
 // ==========================================
 Route::get('/prestadores-turisticos', [PrestadoresPublicoController::class, 'getPrestadoresPublicos']);
+Route::get('/redes-sociales', [PrestadoresPublicoController::class, 'getRedesSociales']);
 
 // ==========================================
 // RUTAS DE Servicios Culturales / cultural-services (ServicioCulturalController)
@@ -106,9 +142,13 @@ Route::get('/areas-artisticas', [ServicioCulturalController::class, 'getAreasArt
 Route::post('/areas-artisticas/register', [ServicioCulturalController::class, 'createAreasArtisticas']);
 Route::delete('/areas-artisticas/{id}', [ServicioCulturalController::class, 'deleteAreasArtisticas']);
 
-Route::get('/tipos-perfiles-sc', [ServicioCulturalController::class, 'getTiposPerfilesSc']);
-Route::post('/tipos-perfiles-sc/register', [ServicioCulturalController::class, 'createTiposPerfilesSc']);
-Route::delete('/tipos-perfiles-sc/{id}', [ServicioCulturalController::class, 'deleteTiposPerfilesSc']);
+Route::get('/tipos-servicio', [ServicioCulturalController::class, 'getTiposServicio']);
+Route::post('/tipos-servicio/register', [ServicioCulturalController::class, 'createTipoServicio']);
+Route::delete('/tipos-servicio/{id}', [ServicioCulturalController::class, 'deleteTipoServicio']);
+
+Route::get('/publico-dirigido', [ServicioCulturalController::class, 'getPublicoDirigido']);
+Route::post('/publico-dirigido/register', [ServicioCulturalController::class, 'createPublicoDirigido']);
+Route::delete('/publico-dirigido/{id}', [ServicioCulturalController::class, 'deletePublicoDirigido']);
 
 // ==========================================
 // RUTAS DE DIAGNÓSTICO (Opcionales, para pruebas)
@@ -124,9 +164,9 @@ Route::get('/debug-db', function () {
 
         return response()->json([
             'mensaje' => 'Esto es lo que REALMENTE existe en Render:',
-            'tablas_en_render' => $tablas
+            'tablas_en_render' => $tablas,
         ]);
-    } catch (\Exception $e) {
+    } catch (Exception $e) {
         return response()->json(['error' => $e->getMessage()]);
     }
 });

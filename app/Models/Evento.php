@@ -6,14 +6,19 @@ use Illuminate\Database\Eloquent\Model;
 
 class Evento extends Model
 {
-
-    protected $table = 'evento';
+    protected $table = 'culturayturismo.evento';
 
     protected $primaryKey = 'id_evento';
 
     public $timestamps = false;
 
+    protected $casts = [
+        'is_visible' => 'boolean',
+        'impacto_economico' => 'decimal:6',
+    ];
+
     protected $fillable = [
+        'codigo',
         'nombre',
         'descripcion',
         'tipo',
@@ -22,11 +27,11 @@ class Evento extends Model
         'fecha_inicio',
         'fecha_fin',
         'asistentes_estimados',
+        'asistentes_reales',
         'impacto_economico',
-        'estado',
-        'url_foto',
         'observaciones',
-        'id_direccion'
+        'is_visible',
+        'id_direccion',
     ];
 
     // Relación con la dirección
@@ -35,9 +40,9 @@ class Evento extends Model
         return $this->belongsTo(DireccionGoogle::class, 'id_direccion');
     }
 
-    // Relación con la galería de fotos
+    // Relación con la galería de fotos (tabla unificada fotos)
     public function fotos()
     {
-        return $this->hasMany(FotosEvento::class, 'id_evento');
+        return $this->hasMany(Foto::class, 'id_evento');
     }
 }
