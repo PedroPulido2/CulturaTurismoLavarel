@@ -25,14 +25,14 @@ class UserController extends Controller
 
     public function getAllProfiles()
     {
-        $usuarios = Usuario::with(['roles', 'modulos'])->get();
+        $usuarios = Usuario::with(['rol', 'modulos'])->get();
 
         return response()->json(['success' => true, 'data' => $usuarios]);
     }
 
     public function getProfileByEmail($email)
     {
-        $usuario = Usuario::with(['roles', 'modulos'])->where('correo', $email)->first();
+        $usuario = Usuario::with(['rol', 'modulos'])->where('correo', $email)->first();
         if (! $usuario) {
             return response()->json(['success' => false, 'message' => 'Perfil no encontrado'], 404);
         }
@@ -42,7 +42,7 @@ class UserController extends Controller
 
     public function getProfileById($id_usuario)
     {
-        $usuario = Usuario::with(['roles', 'modulos'])->where('id_usuario', $id_usuario)->first();
+        $usuario = Usuario::with(['rol', 'modulos'])->where('id_usuario', $id_usuario)->first();
 
         if (! $usuario) {
             return response()->json(['success' => false, 'message' => 'Perfil no encontrado'], 404);
@@ -64,8 +64,7 @@ class UserController extends Controller
             'telefono' => 'required|integer',
             'password' => 'required|string',
             'url_foto' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
-            'roles' => 'sometimes|array',
-            'roles.*' => ['integer', Rule::exists(Rol::class, 'id_rol')],
+            'id_rol' => ['sometimes', 'integer', Rule::exists(Rol::class, 'id_rol')],
         ];
 
         $mensajes = [
@@ -86,6 +85,19 @@ class UserController extends Controller
         try {
             DB::beginTransaction();
 
+            // Rol: el enviado, o Administrador por defecto (la columna id_rol es NOT NULL).
+            // El usuario nuevo nace SIN módulos asignados; los otorga un Super Administrador.
+            $idRol = $request->input('id_rol') ?? Rol::where('nombre', 'Administrador')->value('id_rol');
+
+            if (! $idRol) {
+                DB::rollBack();
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se encontró un rol válido para el usuario',
+                ], 400);
+            }
+
             $usuario = Usuario::create([
                 'tipo_identificacion' => $request->tipo_identificacion,
                 'num_documento' => $request->num_documento,
@@ -95,6 +107,7 @@ class UserController extends Controller
                 'fecha_nacimiento' => $request->fecha_nacimiento,
                 'genero' => $request->genero,
                 'telefono' => $request->telefono,
+                'id_rol' => $idRol,
             ]);
 
             // Si se proporciona foto al momento de crear el usuario
@@ -114,20 +127,9 @@ class UserController extends Controller
                 'intentos_fallidos' => 0,
             ]);
 
-            // Rol por defecto: Administrador (solo si no se enviaron roles explícitos).
-            // El usuario nuevo nace SIN módulos asignados; los otorga un Super Administrador.
-            if ($request->has('roles')) {
-                $usuario->roles()->sync($request->roles);
-            } else {
-                $rolAdmin = Rol::where('nombre', 'Administrador')->first();
-                if ($rolAdmin) {
-                    $usuario->roles()->sync([$rolAdmin->id_rol]);
-                }
-            }
-
             DB::commit();
 
-            $usuario->load(['roles', 'modulos']);
+            $usuario->load(['rol', 'modulos']);
 
             return response()->json([
                 'success' => true,
@@ -165,8 +167,7 @@ class UserController extends Controller
             'genero' => 'sometimes|string|max:50',
             'telefono' => 'sometimes|integer',
             'url_foto' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
-            'roles' => 'sometimes|array',
-            'roles.*' => ['integer', Rule::exists(Rol::class, 'id_rol')],
+            'id_rol' => ['sometimes', 'integer', Rule::exists(Rol::class, 'id_rol')],
         ];
 
         $mensajes = [
@@ -187,8 +188,9 @@ class UserController extends Controller
         try {
             DB::beginTransaction();
 
-            // Llenan los datos básicos del request (excepto la foto, password y roles que requieren trato especial)
-            $usuarioExist->fill($request->except(['url_foto', 'password', 'roles', 'id_usuario']));
+            // Llenan los datos básicos del request (excepto la foto y password que requieren trato especial).
+            // id_rol viaja directo por fill al ser FK única del usuario.
+            $usuarioExist->fill($request->except(['url_foto', 'password', 'id_usuario']));
 
             // Se adjuntó una imagen nueva (se elimina la anterior y se sube la nueva)
             if ($request->hasFile('url_foto')) {
@@ -214,13 +216,9 @@ class UserController extends Controller
                 ]);
             }
 
-            if ($request->has('roles')) {
-                $usuarioExist->roles()->sync($request->roles);
-            }
-
             DB::commit();
 
-            $usuarioExist->load(['roles', 'modulos']);
+            $usuarioExist->load(['rol', 'modulos']);
 
             return response()->json([
                 'success' => true,
@@ -253,7 +251,7 @@ class UserController extends Controller
             $this->driveService->deleteFromDrive($usuario->url_foto);
         }
 
-        // El borrado en cascada elimina login, roles y módulos asignados
+        // El borrado en cascada elimina login y módulos asignados
         $usuario->delete();
 
         return response()->json([

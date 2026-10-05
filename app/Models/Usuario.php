@@ -14,7 +14,6 @@ class Usuario extends Model
 
     protected $hidden = ['reset_token_hash'];
 
-    // Campos que se permiten llenar desde la API (el rol/permiso vive en usuario_rol)
     protected $fillable = [
         'tipo_identificacion',
         'num_documento',
@@ -25,6 +24,7 @@ class Usuario extends Model
         'genero',
         'telefono',
         'url_foto',
+        'id_rol',
     ];
 
     public function login()
@@ -32,9 +32,9 @@ class Usuario extends Model
         return $this->hasOne(Login::class, 'id_usuario');
     }
 
-    public function roles()
+    public function rol()
     {
-        return $this->belongsToMany(Rol::class, 'culturayturismo.usuario_rol', 'usuario_id_usuario', 'rol_id_rol');
+        return $this->belongsTo(Rol::class, 'id_rol');
     }
 
     public function modulos()
@@ -45,6 +45,6 @@ class Usuario extends Model
 
     public function esSuperAdmin(): bool
     {
-        return $this->roles()->where('culturayturismo.rol.nombre', 'Super Administrador')->exists();
+        return $this->rol?->nombre === 'Super Administrador';
     }
 }

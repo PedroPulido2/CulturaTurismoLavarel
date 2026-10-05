@@ -18,6 +18,6 @@ class Rol extends Model
 
     public function usuarios()
     {
-        return $this->belongsToMany(Usuario::class, 'culturayturismo.usuario_rol', 'rol_id_rol', 'usuario_id_usuario');
+        return $this->hasMany(Usuario::class, 'id_rol');
     }
 }
