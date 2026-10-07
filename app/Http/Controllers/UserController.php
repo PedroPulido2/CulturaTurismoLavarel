@@ -2,25 +2,33 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\ActivarCuenta;
 use App\Models\Login;
 use App\Models\Modulo;
 use App\Models\Rol;
 use App\Models\Usuario;
 use App\Services\GoogleDriveService;
+use App\Services\PasswordTokenService;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
     protected $driveService;
 
-    public function __construct(GoogleDriveService $driveService)
+    protected $tokens;
+
+    public function __construct(GoogleDriveService $driveService, PasswordTokenService $tokens)
     {
         $this->driveService = $driveService;
+        $this->tokens = $tokens;
     }
 
     public function getAllProfiles()
@@ -62,10 +70,12 @@ class UserController extends Controller
             'fecha_nacimiento' => 'required|date',
             'genero' => 'required|string|max:50',
             'telefono' => 'required|integer',
-            'password' => 'required|string',
             'url_foto' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'id_rol' => ['sometimes', 'integer', Rule::exists(Rol::class, 'id_rol')],
         ];
+
+        // La contraseña la define el propio usuario desde el correo de activación,
+        // nunca viaja en el registro.
 
         $mensajes = [
             'num_documento.unique' => 'Este número de documento ya se encuentra registrado.',
@@ -122,18 +132,38 @@ class UserController extends Controller
 
             Login::create([
                 'id_usuario' => $usuario->id_usuario,
-                'password' => Hash::make($request->password),
-                'estado' => 'ACTIVO',
+                // Hash aleatorio inutilizable: la clave real la define el usuario
+                // desde el correo de activación. La cuenta nace pendiente.
+                'password' => Hash::make(Str::random(40)),
+                'estado' => 'EN_VERIFICACION',
                 'intentos_fallidos' => 0,
             ]);
 
             DB::commit();
 
+            // Correo de activación (fuera de la transacción para no retenerla
+            // durante el envío SMTP). Si falla, se puede reenviar.
+            $correoEnviado = true;
+            try {
+                $token = $this->tokens->generar();
+                $usuario->reset_token_hash = $token['hash'];
+                $usuario->reset_token_expires_at = $token['expira_en'];
+                $usuario->save();
+
+                $url = $this->urlActivacion($token['token']);
+                Mail::to($usuario->correo)->send(new ActivarCuenta($usuario->nombre, $url));
+            } catch (Exception $e) {
+                Log::error('Error enviando correo de activación a '.$usuario->correo.': '.$e->getMessage());
+                $correoEnviado = false;
+            }
+
             $usuario->load(['rol', 'modulos']);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Perfil creado exitosamente',
+                'message' => $correoEnviado
+                    ? 'Perfil creado exitosamente. Se envió el correo de activación'
+                    : 'Perfil creado, pero no se pudo enviar el correo de activación. Usa reenviar-activacion',
                 'data' => $usuario,
             ], 201);
         } catch (Exception $e) {
@@ -190,7 +220,7 @@ class UserController extends Controller
 
             // Llenan los datos básicos del request (excepto la foto y password que requieren trato especial).
             // id_rol viaja directo por fill al ser FK única del usuario.
-            $usuarioExist->fill($request->except(['url_foto', 'password', 'id_usuario']));
+            $usuarioExist->fill($request->except(['url_foto', 'id_usuario']));
 
             // Se adjuntó una imagen nueva (se elimina la anterior y se sube la nueva)
             if ($request->hasFile('url_foto')) {
@@ -210,12 +240,8 @@ class UserController extends Controller
 
             $usuarioExist->save();
 
-            if ($request->filled('password')) {
-                Login::where('id_usuario', $usuarioExist->id_usuario)->update([
-                    'password' => Hash::make($request->password),
-                ]);
-            }
-
+            // La contraseña solo se define por correo (activación/recuperación),
+            // nunca desde la actualización del perfil.
             DB::commit();
 
             $usuarioExist->load(['rol', 'modulos']);
@@ -346,5 +372,13 @@ class UserController extends Controller
         $usuario->modulos()->detach($id_modulo);
 
         return response()->json(['success' => true, 'message' => 'Permiso retirado correctamente']);
+    }
+
+    //Armador del enlace de activación que viaja en el correo.
+    private function urlActivacion(string $token): string
+    {
+        $base = rtrim(env('FRONTEND_URL', env('APP_URL', 'http://localhost')), '/');
+
+        return $base.'/'.ltrim(env('FRONTEND_ACTIVATION_PATH', '/activar-cuenta'), '/').'?token='.$token;
     }
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\EventoController;
 use App\Http\Controllers\GuiaController;
 use App\Http\Controllers\HotelController;
 use App\Http\Controllers\LoginController;
+use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\PrestadoresPublicoController;
 use App\Http\Controllers\RestauranteController;
 use App\Http\Controllers\ServicioCulturalController;
@@ -18,6 +19,14 @@ use Illuminate\Support\Facades\Route;
 // ==========================================
 Route::post('/login', [LoginController::class, 'login']);
 Route::post('/login/unlock/{id_usuario}', [LoginController::class, 'unlockUser']);
+
+// ==========================================
+// ACTIVACIÓN Y RECUPERACIÓN POR CORREO (PasswordController)
+// ==========================================
+Route::post('/password/activar', [PasswordController::class, 'activar']);
+Route::post('/password/restablecer', [PasswordController::class, 'restablecer']);
+Route::post('/password/olvide', [PasswordController::class, 'olvide']);
+Route::post('/password/reenviar-activacion', [PasswordController::class, 'reenviarActivacion']);
 
 // ==========================================
 // RUTAS DE USUARIOS / PROFILES (UserController)

@@ -24,6 +24,10 @@ class LoginController extends Controller
             return response()->json(['success' => false, 'message' => 'Error de integridad. Credenciales no encontradas'], 403);
         }
 
+        if ($usuario->estado === 'EN_VERIFICACION') {
+            return response()->json(['success' => false, 'message' => 'Cuenta pendiente de activación. Revisa tu correo electrónico'], 403);
+        }
+
         if ($usuario->estado !== 'ACTIVO') {
             return response()->json(['success' => false, 'message' => 'Usuario inactivo o bloqueado. Contacte con soporte'], 403);
         }
