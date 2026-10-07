@@ -17,6 +17,7 @@ class ServicioCultural extends Model
 
     protected $fillable = [
         'id_servicio_cultural',
+        'nit',
         'nombre',
         'telefono',
         'correo',

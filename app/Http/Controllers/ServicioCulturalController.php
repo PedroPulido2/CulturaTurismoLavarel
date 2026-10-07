@@ -79,14 +79,18 @@ class ServicioCulturalController extends Controller
             'id_tipo_servicio' => ['required', 'integer', Rule::exists(TipoServicio::class, 'id_tipo_servicio')],
             'id_publico_dirigido' => ['nullable', 'integer', Rule::exists(PublicoDirigido::class, 'id_publico_dirigido')],
             'id_area_artistica' => ['required', 'integer', Rule::exists(AreaArtistica::class, 'id_area_artistica')],
+            'nit' => ['nullable', 'integer', Rule::unique(ServicioCultural::class, 'nit')],
             'nombre' => 'nullable|string|max:255',
             'telefono' => 'nullable|integer',
-            'correo' => 'nullable|email|max:255',
+            'correo' => ['required', 'email', 'max:255', Rule::unique(ServicioCultural::class, 'correo')],
             'contacto' => 'nullable|string|max:255',
             'biografia' => 'nullable|string',
             'reconocimientos' => 'nullable|string',
             'fotos' => 'sometimes|array',
             'fotos.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120',
+        ], [
+            'correo.unique' => 'Este correo electrónico ya está registrado en otro servicio cultural.',
+            'nit.unique' => 'Este NIT ya está registrado en otro servicio cultural.',
         ]);
 
         if ($validador->fails()) {
@@ -102,6 +106,7 @@ class ServicioCulturalController extends Controller
                 'id_tipo_servicio' => $request->id_tipo_servicio,
                 'id_publico_dirigido' => $request->id_publico_dirigido,
                 'id_area_artistica' => $request->id_area_artistica,
+                'nit' => $request->nit,
                 'nombre' => $request->nombre,
                 'telefono' => $request->telefono,
                 'correo' => $request->correo,
@@ -165,9 +170,10 @@ class ServicioCulturalController extends Controller
             'id_tipo_servicio' => ['sometimes', 'integer', Rule::exists(TipoServicio::class, 'id_tipo_servicio')],
             'id_publico_dirigido' => ['nullable', 'integer', Rule::exists(PublicoDirigido::class, 'id_publico_dirigido')],
             'id_area_artistica' => ['sometimes', 'integer', Rule::exists(AreaArtistica::class, 'id_area_artistica')],
+            'nit' => ['sometimes', 'nullable', 'integer', Rule::unique(ServicioCultural::class, 'nit')->ignore($id, 'id_servicio_cultural')],
             'nombre' => 'nullable|string|max:255',
             'telefono' => 'nullable|integer',
-            'correo' => 'nullable|email|max:255',
+            'correo' => ['sometimes', 'required', 'email', 'max:255', Rule::unique(ServicioCultural::class, 'correo')->ignore($id, 'id_servicio_cultural')],
             'contacto' => 'nullable|string|max:255',
             'biografia' => 'nullable|string',
             'reconocimientos' => 'nullable|string',
@@ -175,6 +181,9 @@ class ServicioCulturalController extends Controller
             'nuevas_fotos.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120',
             'fotos_a_eliminar' => 'sometimes|array',
             'fotos_a_eliminar.*' => 'integer',
+        ], [
+            'correo.unique' => 'Este correo electrónico ya está registrado en otro servicio cultural.',
+            'nit.unique' => 'Este NIT ya está registrado en otro servicio cultural.',
         ]);
 
         if ($validador->fails()) {
@@ -189,6 +198,7 @@ class ServicioCulturalController extends Controller
                 'id_tipo_servicio',
                 'id_publico_dirigido',
                 'id_area_artistica',
+                'nit',
                 'nombre',
                 'telefono',
                 'correo',

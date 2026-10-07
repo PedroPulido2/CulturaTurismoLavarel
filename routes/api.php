@@ -124,10 +124,6 @@ Route::get('/disponibilidades', [GuiaController::class, 'getDisponibilidades']);
 Route::post('/disponibilidades/register', [GuiaController::class, 'createDisponibilidad']);
 Route::delete('/disponibilidades/{id}', [GuiaController::class, 'deleteDisponibilidad']);
 
-Route::get('/competencias', [GuiaController::class, 'getCompetencias']);
-Route::post('/competencias/register', [GuiaController::class, 'createCompetencia']);
-Route::delete('/competencias/{id}', [GuiaController::class, 'deleteCompetencia']);
-
 Route::get('/tipos-publico', [GuiaController::class, 'getTiposPublico']);
 Route::post('/tipos-publico/register', [GuiaController::class, 'createTipoPublico']);
 Route::delete('/tipos-publico/{id}', [GuiaController::class, 'deleteTipoPublico']);

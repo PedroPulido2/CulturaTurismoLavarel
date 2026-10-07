@@ -36,7 +36,7 @@ class Guia extends Model
         'is_visible',
         'id_especialidad',
         'id_disponibilidad',
-        'id_competencias',
+        'descripcion',
         'id_tipo_publico',
     ];
 
@@ -48,11 +48,6 @@ class Guia extends Model
     public function disponibilidad()
     {
         return $this->belongsTo(Disponibilidad::class, 'id_disponibilidad');
-    }
-
-    public function competencia()
-    {
-        return $this->belongsTo(Competencia::class, 'id_competencias');
     }
 
     public function tipoPublico()

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Competencia;
 use App\Models\Disponibilidad;
 use App\Models\Especialidad;
 use App\Models\Guia;
@@ -16,7 +15,7 @@ class GuiaController extends Controller
 {
     protected function relacionesGuia(): array
     {
-        return ['especialidad', 'disponibilidad', 'competencia', 'tipoPublico'];
+        return ['especialidad', 'disponibilidad', 'tipoPublico'];
     }
 
     public function getAllGuias()
@@ -54,7 +53,7 @@ class GuiaController extends Controller
             'is_visible' => 'nullable|boolean',
             'id_especialidad' => ['required', 'integer', Rule::exists(Especialidad::class, 'id_especialidad')],
             'id_disponibilidad' => ['required', 'integer', Rule::exists(Disponibilidad::class, 'id_disponibilidad')],
-            'id_competencias' => ['required', 'integer', Rule::exists(Competencia::class, 'id_competencias')],
+            'descripcion' => 'nullable|string|max:255',
             'id_tipo_publico' => ['required', 'integer', Rule::exists(TipoPublico::class, 'id_tipo_publico')],
         ], [
             'n_cedula.unique' => 'Ya existe un guía registrado con este número de cédula.',
@@ -80,7 +79,7 @@ class GuiaController extends Controller
                 'asociacion',
                 'id_especialidad',
                 'id_disponibilidad',
-                'id_competencias',
+                'descripcion',
                 'id_tipo_publico',
             ]);
 
@@ -127,7 +126,7 @@ class GuiaController extends Controller
             'is_visible' => 'nullable|boolean',
             'id_especialidad' => ['sometimes', 'integer', Rule::exists(Especialidad::class, 'id_especialidad')],
             'id_disponibilidad' => ['sometimes', 'integer', Rule::exists(Disponibilidad::class, 'id_disponibilidad')],
-            'id_competencias' => ['sometimes', 'integer', Rule::exists(Competencia::class, 'id_competencias')],
+            'descripcion' => 'nullable|string|max:255',
             'id_tipo_publico' => ['sometimes', 'integer', Rule::exists(TipoPublico::class, 'id_tipo_publico')],
         ], [
             'n_cedula.unique' => 'El número de cédula ya está ocupado por otro guía.',
@@ -152,7 +151,7 @@ class GuiaController extends Controller
                 'asociacion',
                 'id_especialidad',
                 'id_disponibilidad',
-                'id_competencias',
+                'descripcion',
                 'id_tipo_publico',
             ]);
 
@@ -276,46 +275,6 @@ class GuiaController extends Controller
             return response()->json(['success' => true, 'message' => 'Disponibilidad eliminada correctamente']);
         } catch (Exception $e) {
             return response()->json(['success' => false, 'message' => 'Error al eliminar la disponibilidad: '.$e->getMessage()], 500);
-        }
-    }
-
-    /**
-     * Catálogo de competencias de guía.
-     */
-    public function getCompetencias()
-    {
-        return response()->json(['success' => true, 'data' => Competencia::all()]);
-    }
-
-    public function createCompetencia(Request $request)
-    {
-        $validador = Validator::make($request->all(), ['nombre' => 'required|string|max:80']);
-        if ($validador->fails()) {
-            return response()->json(['success' => false, 'errors' => $validador->errors()], 400);
-        }
-
-        try {
-            $item = Competencia::create(['nombre' => $request->nombre]);
-
-            return response()->json(['success' => true, 'message' => 'Competencia creada correctamente', 'data' => $item], 201);
-        } catch (Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Error al crear la competencia: '.$e->getMessage()], 500);
-        }
-    }
-
-    public function deleteCompetencia($id)
-    {
-        $item = Competencia::find($id);
-        if (! $item) {
-            return response()->json(['success' => false, 'message' => 'Competencia no encontrada'], 404);
-        }
-
-        try {
-            $item->delete();
-
-            return response()->json(['success' => true, 'message' => 'Competencia eliminada correctamente']);
-        } catch (Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Error al eliminar la competencia: '.$e->getMessage()], 500);
         }
     }
 
