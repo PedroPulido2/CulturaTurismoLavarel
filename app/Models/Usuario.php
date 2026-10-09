@@ -12,7 +12,7 @@ class Usuario extends Model
 
     public $timestamps = false;
 
-    protected $hidden = ['reset_token_hash'];
+    protected $hidden = ['reset_token_hash', 'reset_token_expires_at'];
 
     protected $fillable = [
         'tipo_identificacion',

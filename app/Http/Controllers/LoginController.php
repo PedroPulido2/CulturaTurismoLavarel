@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Login;
 use App\Models\Usuario;
-use Firebase\JWT\JWT;
+use App\Services\JwtService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
 class LoginController extends Controller
 {
+    public function __construct(private JwtService $jwt) {}
+
     public function login(Request $request)
     {
         $usuario_data = Usuario::where('correo', $request->correo)->first();
@@ -56,19 +58,9 @@ class LoginController extends Controller
         $usuario->ultimo_acceso = now();
         $usuario->save();
 
-        // 2. CREACIÓN DEL PAYLOAD (Datos que viajan dentro del token)
-        $payload = [
-            'iss' => env('APP_URL'), // Emisor (Issuer)
-            'aud' => env('APP_URL'), // Audiencia (Audience)
-            'iat' => time(), // Emitido en (Issued at)
-            'exp' => time() + (60 * 60 * 24), // Expira en (Expiration time) - Aquí son 24 horas
-            // Datos útiles para el frontend (no pongas contraseñas aquí)
-            'sub' => $usuario_data->id_usuario,     // Identificador del sujeto
-            'user' => $usuario_data->toArray(),
-        ];
-
-        // 3. FIRMA DEL TOKEN
-        $jwt = JWT::encode($payload, env('JWT_SECRET'), 'HS256');
+        // Token mínimo (sub/iss/aud/iat/exp). El frontend pide
+        // GET /api/profiles/{id} para los datos del usuario.
+        $jwt = $this->jwt->issueToken($usuario_data->id_usuario);
 
         return response()->json([
             'success' => true,

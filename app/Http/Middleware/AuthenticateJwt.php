@@ -8,15 +8,14 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class EnsureSuperAdmin
+/**
+ * Solo exige login válido (cualquier rol) con cuenta ACTIVO.
+ * Deja auth_user_id / auth_is_superadmin en los attributes.
+ */
+class AuthenticateJwt
 {
     public function __construct(private JwtService $jwt) {}
 
-    /**
-     * Verifica el JWT (Bearer) y exige rol "Super Administrador"
-     * con cuenta en estado ACTIVO.
-     * Deja auth_user_id / auth_is_superadmin en los attributes.
-     */
     public function handle(Request $request, Closure $next): Response
     {
         $token = $request->bearerToken();
@@ -41,12 +40,8 @@ class EnsureSuperAdmin
             return response()->json(['success' => false, 'message' => 'Usuario inactivo o bloqueado. Contacte con soporte'], 403);
         }
 
-        if (! $usuario->esSuperAdmin()) {
-            return response()->json(['success' => false, 'message' => 'Acceso denegado. Se requiere Super Administrador'], 403);
-        }
-
         $request->attributes->set('auth_user_id', $usuario->id_usuario);
-        $request->attributes->set('auth_is_superadmin', true);
+        $request->attributes->set('auth_is_superadmin', $usuario->esSuperAdmin());
 
         return $next($request);
     }

@@ -8,16 +8,19 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class EnsureSuperAdmin
+/**
+ * Permite ver/editar un perfil al Super Administrador
+ * o al propio dueño de la cuenta.
+ *
+ * Soporta rutas con {id_usuario} o con {email}:
+ *   ->middleware('self_or_superadmin:id_usuario')
+ *   ->middleware('self_or_superadmin:email')
+ */
+class EnsureSelfOrSuperAdmin
 {
     public function __construct(private JwtService $jwt) {}
 
-    /**
-     * Verifica el JWT (Bearer) y exige rol "Super Administrador"
-     * con cuenta en estado ACTIVO.
-     * Deja auth_user_id / auth_is_superadmin en los attributes.
-     */
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next, string $parametro = 'id_usuario'): Response
     {
         $token = $request->bearerToken();
 
@@ -41,12 +44,23 @@ class EnsureSuperAdmin
             return response()->json(['success' => false, 'message' => 'Usuario inactivo o bloqueado. Contacte con soporte'], 403);
         }
 
-        if (! $usuario->esSuperAdmin()) {
-            return response()->json(['success' => false, 'message' => 'Acceso denegado. Se requiere Super Administrador'], 403);
+        $esSuper = $usuario->esSuperAdmin();
+        $request->attributes->set('auth_user_id', $usuario->id_usuario);
+        $request->attributes->set('auth_is_superadmin', $esSuper);
+
+        if ($esSuper) {
+            return $next($request);
         }
 
-        $request->attributes->set('auth_user_id', $usuario->id_usuario);
-        $request->attributes->set('auth_is_superadmin', true);
+        $objetivo = $request->route($parametro);
+
+        $esPropio = $parametro === 'email'
+            ? (strtolower((string) $objetivo) === strtolower((string) $usuario->correo))
+            : ((string) $objetivo === (string) $usuario->id_usuario);
+
+        if (! $esPropio) {
+            return response()->json(['success' => false, 'message' => 'Acceso denegado. Solo puedes ver tu propio perfil'], 403);
+        }
 
         return $next($request);
     }

@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Middleware\AuthenticateJwt;
+use App\Http\Middleware\CheckModuloAccess;
+use App\Http\Middleware\EnsureSelfOrSuperAdmin;
 use App\Http\Middleware\EnsureSuperAdmin;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -15,6 +18,9 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'superadmin' => EnsureSuperAdmin::class,
+            'auth.jwt' => AuthenticateJwt::class,
+            'modulo' => CheckModuloAccess::class,
+            'self_or_superadmin' => EnsureSelfOrSuperAdmin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

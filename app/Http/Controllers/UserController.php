@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\UsuarioDetailResource;
+use App\Http\Resources\UsuarioListResource;
 use App\Mail\ActivarCuenta;
 use App\Models\Login;
 use App\Models\Modulo;
@@ -31,13 +33,20 @@ class UserController extends Controller
         $this->tokens = $tokens;
     }
 
+    /**
+     * Lista de gestión (solo Super Administrador, vía middleware).
+     * Devuelve vista recortada sin documento/teléfono/nacimiento.
+     */
     public function getAllProfiles()
     {
         $usuarios = Usuario::with(['rol', 'modulos'])->get();
 
-        return response()->json(['success' => true, 'data' => $usuarios]);
+        return response()->json(['success' => true, 'data' => UsuarioListResource::collection($usuarios)]);
     }
 
+    /**
+     * Detalle (Super Administrador o dueño, vía middleware).
+     */
     public function getProfileByEmail($email)
     {
         $usuario = Usuario::with(['rol', 'modulos'])->where('correo', $email)->first();
@@ -45,9 +54,12 @@ class UserController extends Controller
             return response()->json(['success' => false, 'message' => 'Perfil no encontrado'], 404);
         }
 
-        return response()->json(['success' => true, 'data' => $usuario]);
+        return response()->json(['success' => true, 'data' => new UsuarioDetailResource($usuario)]);
     }
 
+    /**
+     * Detalle (Super Administrador o dueño, vía middleware).
+     */
     public function getProfileById($id_usuario)
     {
         $usuario = Usuario::with(['rol', 'modulos'])->where('id_usuario', $id_usuario)->first();
@@ -56,7 +68,7 @@ class UserController extends Controller
             return response()->json(['success' => false, 'message' => 'Perfil no encontrado'], 404);
         }
 
-        return response()->json(['success' => true, 'data' => $usuario]);
+        return response()->json(['success' => true, 'data' => new UsuarioDetailResource($usuario)]);
     }
 
     public function createProfile(Request $request)
@@ -164,7 +176,7 @@ class UserController extends Controller
                 'message' => $correoEnviado
                     ? 'Perfil creado exitosamente. Se envió el correo de activación'
                     : 'Perfil creado, pero no se pudo enviar el correo de activación. Usa reenviar-activacion',
-                'data' => $usuario,
+                'data' => new UsuarioDetailResource($usuario),
             ], 201);
         } catch (Exception $e) {
             DB::rollBack();
@@ -176,6 +188,10 @@ class UserController extends Controller
         }
     }
 
+    /**
+     * Actualiza un perfil (Super Administrador o dueño, vía middleware).
+     * Solo el Super Administrador puede cambiar id_rol.
+     */
     public function updateProfile(Request $request, $id_usuario)
     {
         $usuarioExist = Usuario::find($id_usuario);
@@ -185,6 +201,18 @@ class UserController extends Controller
                 'success' => false,
                 'message' => 'Perfil no encontrado',
             ], 404);
+        }
+
+        // Defensa en profundidad por si la ruta se expone sin middleware:
+        // solo superadmin o el dueño pueden llegar aquí.
+        $authId = $request->attributes->get('auth_user_id');
+        $esSuper = (bool) $request->attributes->get('auth_is_superadmin', false);
+        if ($authId !== null && ! $esSuper && (string) $authId !== (string) $id_usuario) {
+            return response()->json(['success' => false, 'message' => 'Acceso denegado. Solo puedes editar tu propio perfil'], 403);
+        }
+
+        if (! $esSuper && $request->has('id_rol')) {
+            return response()->json(['success' => false, 'message' => 'Solo un Super Administrador puede cambiar el rol'], 403);
         }
 
         $reglas = [
@@ -249,7 +277,7 @@ class UserController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Perfil actualizado exitosamente',
-                'data' => $usuarioExist,
+                'data' => new UsuarioDetailResource($usuarioExist),
             ]);
         } catch (Exception $e) {
             DB::rollBack();
@@ -374,7 +402,7 @@ class UserController extends Controller
         return response()->json(['success' => true, 'message' => 'Permiso retirado correctamente']);
     }
 
-    //Armador del enlace de activación que viaja en el correo.
+    // Armador del enlace de activación que viaja en el correo.
     private function urlActivacion(string $token): string
     {
         $base = rtrim(env('FRONTEND_URL', env('APP_URL', 'http://localhost')), '/');

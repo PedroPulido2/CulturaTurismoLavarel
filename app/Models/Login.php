@@ -12,6 +12,8 @@ class Login extends Model
 
     public $timestamps = false;
 
+    protected $hidden = ['password'];
+
     // campos que permitimos llenar desde la API
     protected $fillable = [
         'id_usuario',
