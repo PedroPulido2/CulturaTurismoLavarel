@@ -23,7 +23,6 @@ class UsuarioListResource extends JsonResource
             'correo' => $this->correo,
             'url_foto' => $this->url_foto,
             'rol' => $this->whenLoaded('rol', fn () => $this->rol ? [
-                'id_rol' => $this->rol->id_rol,
                 'nombre' => $this->rol->nombre,
             ] : null),
             'modulos' => $this->whenLoaded('modulos', fn () => $this->modulos->map(fn ($m) => [

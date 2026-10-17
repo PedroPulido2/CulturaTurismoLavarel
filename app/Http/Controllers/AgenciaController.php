@@ -7,6 +7,7 @@ use App\Models\Agencia;
 use App\Models\Foto;
 use App\Models\TipoAgencia;
 use App\Services\GoogleDriveService;
+use App\Services\PortadaService;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -194,10 +195,26 @@ class AgenciaController extends Controller
             'nuevas_fotos.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120',
             'fotos_a_eliminar' => 'sometimes|array',
             'fotos_a_eliminar.*' => 'integer',
+            'id_foto_portada' => 'nullable|integer', // ID de foto existente que será la portada
         ], $this->reglasRedesSociales()));
 
         if ($validador->fails()) {
             return response()->json(['success' => false, 'errors' => $validador->errors()], 400);
+        }
+
+        // La portada debe ser una foto existente de esta agencia y no puede
+        // eliminarse en la misma petición (se valida antes de abrir la transacción).
+        if ($request->filled('id_foto_portada')) {
+            $aEliminar = array_map('intval', (array) $request->input('fotos_a_eliminar', []));
+            if (in_array((int) $request->input('id_foto_portada'), $aEliminar, true)) {
+                return response()->json(['success' => false, 'message' => 'La foto elegida como portada no puede eliminarse en la misma petición'], 422);
+            }
+            $portadaPertenece = Foto::where('id_foto', $request->input('id_foto_portada'))
+                ->where('id_agencia', $id)
+                ->exists();
+            if (! $portadaPertenece) {
+                return response()->json(['success' => false, 'message' => 'La foto elegida como portada no pertenece a esta agencia'], 422);
+            }
         }
 
         try {
@@ -265,6 +282,15 @@ class AgenciaController extends Controller
                         'id_agencia' => $id,
                     ]);
                 }
+            }
+
+            // Portada: se marca la elegida o se garantiza una si quedó sin ninguna
+            // (ej. se eliminó la portada anterior).
+            $portadas = app(PortadaService::class);
+            if ($request->filled('id_foto_portada')) {
+                $portadas->asignar('id_agencia', $id, (int) $request->input('id_foto_portada'));
+            } else {
+                $portadas->asegurar('id_agencia', $id);
             }
 
             DB::commit();

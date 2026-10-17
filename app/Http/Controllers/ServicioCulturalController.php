@@ -8,6 +8,7 @@ use App\Models\PublicoDirigido;
 use App\Models\ServicioCultural;
 use App\Models\TipoServicio;
 use App\Services\GoogleDriveService;
+use App\Services\PortadaService;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -181,6 +182,7 @@ class ServicioCulturalController extends Controller
             'nuevas_fotos.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120',
             'fotos_a_eliminar' => 'sometimes|array',
             'fotos_a_eliminar.*' => 'integer',
+            'id_foto_portada' => 'nullable|integer', // ID de foto existente que será la portada
         ], [
             'correo.unique' => 'Este correo electrónico ya está registrado en otro servicio cultural.',
             'nit.unique' => 'Este NIT ya está registrado en otro servicio cultural.',
@@ -188,6 +190,21 @@ class ServicioCulturalController extends Controller
 
         if ($validador->fails()) {
             return response()->json(['success' => false, 'errors' => $validador->errors()], 400);
+        }
+
+        // La portada debe ser una foto existente de este servicio y no puede
+        // eliminarse en la misma petición (se valida antes de abrir la transacción).
+        if ($request->filled('id_foto_portada')) {
+            $aEliminar = array_map('intval', (array) $request->input('fotos_a_eliminar', []));
+            if (in_array((int) $request->input('id_foto_portada'), $aEliminar, true)) {
+                return response()->json(['success' => false, 'message' => 'La foto elegida como portada no puede eliminarse en la misma petición'], 422);
+            }
+            $portadaPertenece = Foto::where('id_foto', $request->input('id_foto_portada'))
+                ->where('id_servicio_cultural', $id)
+                ->exists();
+            if (! $portadaPertenece) {
+                return response()->json(['success' => false, 'message' => 'La foto elegida como portada no pertenece a este servicio cultural'], 422);
+            }
         }
 
         try {
@@ -238,6 +255,15 @@ class ServicioCulturalController extends Controller
                         'id_servicio_cultural' => $id,
                     ]);
                 }
+            }
+
+            // Portada: se marca la elegida o se garantiza una si quedó sin ninguna
+            // (ej. se eliminó la portada anterior).
+            $portadas = app(PortadaService::class);
+            if ($request->filled('id_foto_portada')) {
+                $portadas->asignar('id_servicio_cultural', $id, (int) $request->input('id_foto_portada'));
+            } else {
+                $portadas->asegurar('id_servicio_cultural', $id);
             }
 
             DB::commit();

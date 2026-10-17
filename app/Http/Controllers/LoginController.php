@@ -31,7 +31,7 @@ class LoginController extends Controller
         }
 
         if ($usuario->estado !== 'ACTIVO') {
-            return response()->json(['success' => false, 'message' => 'Usuario inactivo o bloqueado. Contacte con soporte'], 403);
+            return response()->json(['success' => false, 'message' => 'Usuario inactivo o bloqueado. Restablece tu contraseña'], 403);
         }
 
         // Verificacion de la contraseña encriptada
