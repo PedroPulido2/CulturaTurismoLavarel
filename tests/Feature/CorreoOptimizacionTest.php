@@ -10,12 +10,23 @@ use Tests\TestCase;
 
 class CorreoOptimizacionTest extends TestCase
 {
-    public function test_logo_url_es_remota_y_liviana(): void
+    public function test_logo_url_retorna_null_en_localhost(): void
     {
-        $url = CorreoService::logoUrl();
+        config(['app.url' => 'http://localhost']);
+        config(['mail.logo_url' => null]);
 
-        $this->assertStringEndsWith('/escudoLogo-mail.png', $url);
-        $this->assertMatchesRegularExpression('#^https?://#', $url);
+        $this->assertNull(CorreoService::logoUrl());
+    }
+
+    public function test_logo_url_remota_con_dominio_publico(): void
+    {
+        config(['app.url' => 'https://cultura.example.com']);
+        config(['mail.logo_url' => null]);
+
+        $this->assertSame(
+            'https://cultura.example.com/escudoLogo-mail.png',
+            CorreoService::logoUrl()
+        );
     }
 
     public function test_logo_url_respeta_override(): void
@@ -34,26 +45,33 @@ class CorreoOptimizacionTest extends TestCase
         }
     }
 
-    public function test_mailable_activacion_expone_logo_sin_embed(): void
+    public function test_mailable_usa_embed_cuando_no_hay_url_publica(): void
     {
+        config(['app.url' => 'http://localhost']);
+        config(['mail.logo_url' => null]);
+
         $mailable = new ActivarCuenta('Ana', 'https://front.test/activar-cuenta?token=abc');
 
-        $this->assertStringEndsWith('/escudoLogo-mail.png', $mailable->logoUrl);
+        $this->assertNull($mailable->logoUrl);
+        $this->assertNotNull($mailable->logoEmbedPath);
 
         $html = $mailable->render();
 
-        $this->assertStringContainsString('escudoLogo-mail.png', $html);
-        $this->assertStringNotContainsString('cid:', $html);
-        $this->assertStringContainsString('<img src="http', $html);
+        $this->assertStringContainsString('<img src="', $html);
+        // Incrustada: data URI en previsualización, cid: al enviar de verdad.
+        $this->assertTrue(str_contains($html, 'cid:') || str_contains($html, 'data:image/'));
     }
 
-    public function test_mailable_restablecer_expone_logo_sin_embed(): void
+    public function test_mailable_usa_remota_con_url_publica(): void
     {
-        $mailable = new RestablecerPassword('Ana', 'https://front.test/restablecer-password?token=abc');
+        $mailable = new RestablecerPassword('Ana', 'https://front.test/restablecer-password?token=abc', 'https://cdn.example.com/logo.png');
+
+        $this->assertSame('https://cdn.example.com/logo.png', $mailable->logoUrl);
+        $this->assertNull($mailable->logoEmbedPath);
 
         $html = $mailable->render();
 
-        $this->assertStringContainsString('escudoLogo-mail.png', $html);
+        $this->assertStringContainsString('https://cdn.example.com/logo.png', $html);
         $this->assertStringNotContainsString('cid:', $html);
     }
 
@@ -61,12 +79,12 @@ class CorreoOptimizacionTest extends TestCase
     {
         Mail::fake();
 
-        $ok = app(CorreoService::class)->enviarActivacion('a@example.com', 'Ana', 'https://front.test/x?token=abc');
+        $ok = app(CorreoService::class)->enviarActivacion('a@example.com', 'Ana', 'https://front.test/x?token=abc', 'https://cdn.example.com/logo.png');
 
         $this->assertTrue($ok);
         Mail::assertSent(ActivarCuenta::class, function (ActivarCuenta $mail) {
             return $mail->hasTo('a@example.com')
-                && str_ends_with($mail->logoUrl, '/escudoLogo-mail.png')
+                && $mail->logoUrl === 'https://cdn.example.com/logo.png'
                 && count($mail->attachments) === 0;
         });
     }

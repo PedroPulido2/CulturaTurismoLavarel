@@ -11,24 +11,70 @@ use Illuminate\Support\Facades\Mail;
 class CorreoService
 {
     /**
-     * URL pública absoluta del logo liviano para los correos.
-     * Se sirve desde public/escudoLogo-mail.png (imagen remota:
-     * se ve en el diseño pero no viaja como adjunto).
+     * URL pública absoluta del logo liviano (public/escudoLogo-mail.png).
+     * Retorna null cuando no hay URL pública utilizable (ej. APP_URL en
+     * localhost, que ningún cliente de correo puede resolver): en ese caso
+     * las plantillas incrustan el archivo (embed), que siempre se muestra.
      */
-    public static function logoUrl(?string $override = null): string
+    public static function logoUrl(?string $override = null): ?string
     {
-        if ($override) {
+        if (is_string($override) && $override !== '') {
             return $override;
         }
 
-        $directa = env('MAIL_LOGO_URL');
+        $directa = config('mail.logo_url');
         if (is_string($directa) && $directa !== '') {
             return $directa;
         }
 
-        $base = rtrim((string) config('app.url', env('APP_URL', 'http://localhost')), '/');
+        $base = rtrim((string) config('app.url', 'http://localhost'), '/');
+        $url = $base.'/escudoLogo-mail.png';
 
-        return $base.'/escudoLogo-mail.png';
+        if (! self::esHostPublico($url)) {
+            return null;
+        }
+
+        if (! is_file(public_path('escudoLogo-mail.png'))) {
+            return null;
+        }
+
+        return $url;
+    }
+
+    /**
+     * Ruta local del logo a incrustar cuando no hay URL remota usable.
+     * Prefiere la versión liviana y cae a la original.
+     */
+    public static function logoEmbedPath(): ?string
+    {
+        foreach (['escudoLogo-mail.png', 'escudoLogo.png'] as $archivo) {
+            $ruta = public_path($archivo);
+            if (is_file($ruta)) {
+                return $ruta;
+            }
+        }
+
+        return null;
+    }
+
+    private static function esHostPublico(string $url): bool
+    {
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+
+        if ($host === '' || $host === 'localhost') {
+            return false;
+        }
+
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
+            return filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false;
+        }
+
+        // Nombres de un solo segmento (mailpit, app, ...) son red local.
+        if (! str_contains($host, '.')) {
+            return false;
+        }
+
+        return true;
     }
 
     public function enviarActivacion(string $correo, string $nombre, string $url, ?string $logoUrl = null): bool

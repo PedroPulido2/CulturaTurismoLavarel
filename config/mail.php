@@ -101,6 +101,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Logo remoto de los correos
+    |--------------------------------------------------------------------------
+    |
+    | URL absoluta del logo liviano usado en las plantillas. Si se deja
+    | vacío se arma con APP_URL + /escudoLogo-mail.png, y si el host no
+    | es público (ej. localhost) se incrusta el archivo en su lugar.
+    |
+    */
+
+    'logo_url' => env('MAIL_LOGO_URL'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Global "From" Address
     |--------------------------------------------------------------------------
     |

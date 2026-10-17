@@ -13,7 +13,9 @@ class ActivarCuenta extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public string $logoUrl;
+    public ?string $logoUrl;
+
+    public ?string $logoEmbedPath;
 
     public function __construct(
         public string $nombre,
@@ -21,6 +23,7 @@ class ActivarCuenta extends Mailable
         ?string $logoUrl = null,
     ) {
         $this->logoUrl = $logoUrl ?? CorreoService::logoUrl();
+        $this->logoEmbedPath = $this->logoUrl === null ? CorreoService::logoEmbedPath() : null;
     }
 
     public function envelope(): Envelope
