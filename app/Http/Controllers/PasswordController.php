@@ -2,17 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Mail\ActivarCuenta;
-use App\Mail\RestablecerPassword;
 use App\Models\Login;
 use App\Models\Usuario;
+use App\Services\CorreoService;
 use App\Services\PasswordTokenService;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 
 class PasswordController extends Controller
@@ -90,9 +88,13 @@ class PasswordController extends Controller
             try {
                 $token = $this->emitirToken($usuario);
                 $url = $this->urlFrontend(env('FRONTEND_RESET_PATH', '/restablecer-password'), $token);
-                Mail::to($usuario->correo)->send(new RestablecerPassword($usuario->nombre, $url));
+                $correo = $usuario->correo;
+                $nombre = $usuario->nombre;
+                app()->terminating(function () use ($correo, $nombre, $url) {
+                    app(CorreoService::class)->enviarRestablecimiento($correo, $nombre, $url);
+                });
             } catch (Exception $e) {
-                Log::error('Error enviando correo de recuperación: '.$e->getMessage());
+                Log::error('Error programando correo de recuperación: '.$e->getMessage());
             }
         }
 
@@ -174,9 +176,13 @@ class PasswordController extends Controller
             try {
                 $token = $this->emitirToken($usuario);
                 $url = $this->urlFrontend(env('FRONTEND_ACTIVATION_PATH', '/activar-cuenta'), $token);
-                Mail::to($usuario->correo)->send(new ActivarCuenta($usuario->nombre, $url));
+                $correo = $usuario->correo;
+                $nombre = $usuario->nombre;
+                app()->terminating(function () use ($correo, $nombre, $url) {
+                    app(CorreoService::class)->enviarActivacion($correo, $nombre, $url);
+                });
             } catch (Exception $e) {
-                Log::error('Error reenviando activación: '.$e->getMessage());
+                Log::error('Error programando reenvío de activación: '.$e->getMessage());
             }
         }
 

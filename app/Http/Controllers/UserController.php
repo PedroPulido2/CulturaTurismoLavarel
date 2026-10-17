@@ -4,11 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\UsuarioDetailResource;
 use App\Http\Resources\UsuarioListResource;
-use App\Mail\ActivarCuenta;
 use App\Models\Login;
 use App\Models\Modulo;
 use App\Models\Rol;
 use App\Models\Usuario;
+use App\Services\CorreoService;
 use App\Services\GoogleDriveService;
 use App\Services\PasswordTokenService;
 use Exception;
@@ -16,7 +16,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -153,8 +152,9 @@ class UserController extends Controller
 
             DB::commit();
 
-            // Correo de activación (fuera de la transacción para no retenerla
-            // durante el envío SMTP). Si falla, se puede reenviar.
+            // Correo de activación (fuera de la transacción para no retenerla).
+            // El token se genera aquí (rápido) y el SMTP se envía tras responder,
+            // para no bloquear el 201. Si falla, se puede reenviar.
             $correoEnviado = true;
             try {
                 $token = $this->tokens->generar();
@@ -163,9 +163,13 @@ class UserController extends Controller
                 $usuario->save();
 
                 $url = $this->urlActivacion($token['token']);
-                Mail::to($usuario->correo)->send(new ActivarCuenta($usuario->nombre, $url));
+                $correo = $usuario->correo;
+                $nombre = $usuario->nombre;
+                app()->terminating(function () use ($correo, $nombre, $url) {
+                    app(CorreoService::class)->enviarActivacion($correo, $nombre, $url);
+                });
             } catch (Exception $e) {
-                Log::error('Error enviando correo de activación a '.$usuario->correo.': '.$e->getMessage());
+                Log::error('Error programando correo de activación a '.$usuario->correo.': '.$e->getMessage());
                 $correoEnviado = false;
             }
 

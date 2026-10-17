@@ -75,7 +75,7 @@
                                     <td align="center" style="padding: 8px 10px;">
                                         <a href="javascript:void(0);"
                                             style="text-decoration: none; cursor: default; display: block;">
-                                            <img src="{{ $message->embed(public_path('escudoLogo.png')) }}"
+                                            <img src="{{ $logoUrl }}"
                                                 alt="Secretaría de Cultura, Turismo y Patrimonio - Sogamoso" width="420"
                                                 style="width: 100%; max-width: 420px; height: auto; display: block; margin: 0 auto; border: 0;">
                                         </a>
