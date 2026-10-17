@@ -158,7 +158,7 @@ class AtractivoTuristicoController extends Controller
             'latitud' => 'nullable|numeric',
             'longitud' => 'nullable|numeric',
             'nuevas_fotos' => 'sometimes|array',
-            'nuevas_fotos.*' => 'image|mimes:jpeg,png,jpg|max:5120',
+            'nuevas_fotos.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120',
             'fotos_a_eliminar' => 'sometimes|array', // Array con los IDs de las fotos a borrar
             'fotos_a_eliminar.*' => 'integer',
         ], $this->reglasRedesSociales()));

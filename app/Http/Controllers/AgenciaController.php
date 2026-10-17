@@ -60,7 +60,7 @@ class AgenciaController extends Controller
             'especialidades' => 'sometimes|array',
             'especialidades.*' => 'string|max:120',
             'fotos' => 'sometimes|array',
-            'fotos.*' => 'image|mimes:jpeg,png,jpg|max:5120',
+            'fotos.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120',
         ], $this->reglasRedesSociales()));
 
         if ($validador->fails()) {
