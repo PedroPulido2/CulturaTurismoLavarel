@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\EventoAdminResource;
+use App\Http\Resources\EventoPublicResource;
 use App\Models\DireccionGoogle;
 use App\Models\Evento;
 use App\Models\Foto;
@@ -22,11 +24,64 @@ class EventoController extends Controller
         $this->driveService = $driveService;
     }
 
-    public function getAllEventos()
+    public function getAllEventos(Request $request)
     {
-        $eventos = Evento::with(['direccion', 'fotos'])->get();
+        // Vitrina pública: solo visibles, campos mínimos y paginado anti-scraping.
+        $perPage = min(max((int) $request->query('per_page', 15), 1), 50);
 
-        return response()->json(['success' => true, 'data' => $eventos]);
+        $paginator = Evento::select([
+            'id_evento', 'nombre', 'fecha_inicio', 'fecha_fin', 'tipo',
+            'organizador', 'is_visible', 'id_direccion',
+        ])
+            ->where('is_visible', true)
+            ->with([
+                'direccion:id_direccion,direccion',
+                'fotos:id_foto,url_foto,is_portada,id_evento',
+            ])
+            ->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'data' => EventoPublicResource::collection($paginator->getCollection()),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+            ],
+        ]);
+    }
+
+    public function getAllEventosAdmin(Request $request)
+    {
+        // Gestión admin: todos (visibles + ocultos), con contacto e is_visible.
+        // Filtro opcional: ?is_visible=true|false
+        $perPage = min(max((int) $request->query('per_page', 15), 1), 50);
+
+        $query = Evento::select([
+            'id_evento', 'nombre', 'fecha_inicio', 'fecha_fin', 'tipo',
+            'organizador', 'contacto', 'is_visible', 'id_direccion',
+        ])->with([
+            'direccion:id_direccion,direccion',
+            'fotos:id_foto,url_foto,is_portada,id_evento',
+        ]);
+
+        if ($request->has('is_visible')) {
+            $query->where('is_visible', filter_var($request->is_visible, FILTER_VALIDATE_BOOLEAN));
+        }
+
+        $paginator = $query->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'data' => EventoAdminResource::collection($paginator->getCollection()),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+            ],
+        ]);
     }
 
     public function getEventoById($id)
@@ -43,7 +98,7 @@ class EventoController extends Controller
     public function createEvento(Request $request)
     {
         $validador = Validator::make($request->all(), [
-            'codigo' => ['nullable', 'string', 'max:15', Rule::unique(Evento::class, 'codigo')],
+            'id_evento' => ['required', 'string', 'max:15', Rule::unique(Evento::class, 'id_evento')],
             'nombre' => 'required|string|max:80',
             'descripcion' => 'nullable|string',
             'tipo' => 'nullable|string|max:50',
@@ -79,9 +134,9 @@ class EventoController extends Controller
 
             $idCarpetaDestino = env('ID_CARPETA_FOTOS_EVENTOS');
 
-            // Crear el evento para obtener el id_evento
+            // Crear el evento con su PK alfanumérica (VARCHAR(15)) asignada por el cliente
             $datos = $request->only([
-                'codigo',
+                'id_evento',
                 'nombre',
                 'descripcion',
                 'tipo',
@@ -146,7 +201,6 @@ class EventoController extends Controller
         }
 
         $validador = Validator::make($request->all(), [
-            'codigo' => ['nullable', 'string', 'max:15', Rule::unique(Evento::class, 'codigo')->ignore($id, 'id_evento')],
             'nombre' => 'sometimes|string|max:80',
             'descripcion' => 'nullable|string',
             'tipo' => 'nullable|string|max:50',
@@ -197,9 +251,8 @@ class EventoController extends Controller
                 ]));
             }
 
-            // Actualizar datos básicos
+            // Actualizar datos básicos (id_evento y codigo no se actualizan: son PK)
             $datos = $request->only([
-                'codigo',
                 'nombre',
                 'descripcion',
                 'tipo',

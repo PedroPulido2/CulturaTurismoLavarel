@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\SyncRedesSociales;
+use App\Http\Resources\AgenciaAdminResource;
+use App\Http\Resources\AgenciaPublicResource;
 use App\Models\Agencia;
 use App\Models\Foto;
 use App\Models\TipoAgencia;
@@ -25,11 +27,64 @@ class AgenciaController extends Controller
         $this->driveService = $driveService;
     }
 
-    public function getAllAgencias()
+    public function getAllAgencias(Request $request)
     {
-        $agencias = Agencia::with(['tipoAgencia', 'especialidades', 'fotos', 'redesSociales'])->get();
+        // Vitrina pública: solo visibles, campos mínimos y paginado anti-scraping.
+        // La tabla agencia no tiene dirección: se omite.
+        $perPage = min(max((int) $request->query('per_page', 15), 1), 50);
 
-        return response()->json(['success' => true, 'data' => $agencias]);
+        $paginator = Agencia::select([
+            'id_agencia', 'nombre', 'celular', 'correo', 'is_visible',
+        ])
+            ->where('is_visible', true)
+            ->with([
+                'fotos:id_foto,url_foto,is_portada,id_agencia',
+                'redesSociales:id_redes_sociales,nombre',
+            ])
+            ->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'data' => AgenciaPublicResource::collection($paginator->getCollection()),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+            ],
+        ]);
+    }
+
+    public function getAllAgenciasAdmin(Request $request)
+    {
+        // Gestión admin: todas (visibles + ocultas), con contacto e is_visible.
+        // Filtro opcional: ?is_visible=true|false
+        $perPage = min(max((int) $request->query('per_page', 15), 1), 50);
+
+        $query = Agencia::select([
+            'id_agencia', 'nit', 'rnt', 'nombre', 'celular', 'correo',
+            'representante_legal', 'is_visible', 'id_tipo_agencia',
+        ])->with([
+            'tipoAgencia:id_tipo_agencia,nombre',
+            'fotos:id_foto,url_foto,is_portada,id_agencia',
+        ]);
+
+        if ($request->has('is_visible')) {
+            $query->where('is_visible', filter_var($request->is_visible, FILTER_VALIDATE_BOOLEAN));
+        }
+
+        $paginator = $query->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'data' => AgenciaAdminResource::collection($paginator->getCollection()),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+            ],
+        ]);
     }
 
     public function getAgenciaById($id)

@@ -59,11 +59,20 @@ class PrestadoresPublicoController extends Controller
     {
         try {
             $categoriaFiltro = $request->query('categoria');
+            // Tope anti-scraping por categoría (el agregador mezcla 3 tablas).
+            $perCategoria = min(max((int) $request->query('per_page', 15), 1), 50);
             $resultado = [];
 
-            // 1. HOTELES
+            // 1. HOTELES (solo visibles, portada + campos mínimos)
             if (! $categoriaFiltro || $categoriaFiltro === 'all' || $categoriaFiltro === 'hoteles') {
-                $hoteles = Hotel::with(['direccion', 'fotos', 'redesSociales'])->get();
+                $hoteles = Hotel::select(['id_hotel', 'nombre', 'celular', 'calificacion_salud', 'id_direccion'])
+                    ->where('is_visible', true)
+                    ->with([
+                        'direccion:id_direccion,direccion',
+                        'fotos:id_foto,url_foto,is_portada,id_hotel',
+                        'redesSociales:id_redes_sociales,nombre',
+                    ])
+                    ->limit($perCategoria)->get();
                 foreach ($hoteles as $hotel) {
                     $urlFoto = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&auto=format&fit=crop&q=60'; // Fallback
                     if ($hotel->fotos && $hotel->fotos->count() > 0) {
@@ -71,24 +80,28 @@ class PrestadoresPublicoController extends Controller
                     }
 
                     $resultado[] = [
-                        'id' => 'hotel_'.($hotel->id ?? $hotel->id_hotel ?? rand(100, 999)),
+                        'id' => 'hotel_'.($hotel->id_hotel ?? rand(100, 999)),
                         'name' => $hotel->nombre ?? 'Establecimiento sin nombre',
                         'category' => 'Hotel',
-                        'direccion' => ($hotel->id_direccion && isset($hotel->direccion->direccion)) ? $hotel->direccion->direccion : 'Sogamoso, Boyacá',
+                        'direccion' => $hotel->direccion?->direccion ?? 'Sogamoso, Boyacá',
                         'celular' => $hotel->celular ?? 'No disponible',
                         'imageUrl' => $urlFoto,
                         'facebook' => $this->redSocialUrl($hotel, 'facebook'),
                         'instagram' => $this->redSocialUrl($hotel, 'instagram'),
-                        'correo' => $hotel->correo ?? null,
-                        'web' => null,
-                        'isvisible' => $hotel->is_visible ?? false,
                     ];
                 }
             }
 
-            // 2. RESTAURANTES
+            // 2. RESTAURANTES (solo visibles)
             if (! $categoriaFiltro || $categoriaFiltro === 'all' || $categoriaFiltro === 'restaurantes') {
-                $restaurantes = Restaurante::with(['direccion', 'fotos', 'redesSociales'])->get();
+                $restaurantes = Restaurante::select(['id_restaurante', 'nombre', 'celular', 'id_direccion', 'id_tipo_cocina'])
+                    ->where('is_visible', true)
+                    ->with([
+                        'direccion:id_direccion,direccion',
+                        'fotos:id_foto,url_foto,is_portada,id_restaurante',
+                        'redesSociales:id_redes_sociales,nombre',
+                    ])
+                    ->limit($perCategoria)->get();
                 foreach ($restaurantes as $restaurante) {
                     $urlFoto = 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&auto=format&fit=crop&q=60';
                     if ($restaurante->fotos && $restaurante->fotos->count() > 0) {
@@ -96,24 +109,27 @@ class PrestadoresPublicoController extends Controller
                     }
 
                     $resultado[] = [
-                        'id' => 'restaurante_'.($restaurante->id ?? $restaurante->id_restaurante ?? rand(100, 999)),
+                        'id' => 'restaurante_'.($restaurante->id_restaurante ?? rand(100, 999)),
                         'name' => $restaurante->nombre ?? 'Establecimiento sin nombre',
                         'category' => 'Restaurante',
-                        'direccion' => ($restaurante->id_direccion && isset($restaurante->direccion->direccion)) ? $restaurante->direccion->direccion : 'Sogamoso, Boyacá',
-                        'celular' => $restaurante->celular ?? $restaurante->correo ?? 'No disponible',
+                        'direccion' => $restaurante->direccion?->direccion ?? 'Sogamoso, Boyacá',
+                        'celular' => $restaurante->celular ?? 'No disponible',
                         'imageUrl' => $urlFoto,
                         'facebook' => $this->redSocialUrl($restaurante, 'facebook'),
                         'instagram' => $this->redSocialUrl($restaurante, 'instagram'),
-                        'correo' => $restaurante->correo ?? null,
-                        'web' => null,
-                        'isvisible' => $restaurante->is_visible ?? false,
                     ];
                 }
             }
 
-            // 3. AGENCIAS
+            // 3. AGENCIAS (solo visibles; sin dirección en el esquema)
             if (! $categoriaFiltro || $categoriaFiltro === 'all' || $categoriaFiltro === 'agencias') {
-                $agencias = Agencia::with(['fotos', 'redesSociales'])->get();
+                $agencias = Agencia::select(['id_agencia', 'nombre', 'celular', 'correo'])
+                    ->where('is_visible', true)
+                    ->with([
+                        'fotos:id_foto,url_foto,is_portada,id_agencia',
+                        'redesSociales:id_redes_sociales,nombre',
+                    ])
+                    ->limit($perCategoria)->get();
                 foreach ($agencias as $agencia) {
                     $urlFoto = 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&auto=format&fit=crop&q=60';
                     if ($agencia->fotos && $agencia->fotos->count() > 0) {
@@ -121,17 +137,14 @@ class PrestadoresPublicoController extends Controller
                     }
 
                     $resultado[] = [
-                        'id' => 'agencia_'.($agencia->id ?? $agencia->id_agencia ?? rand(100, 999)),
+                        'id' => 'agencia_'.($agencia->id_agencia ?? rand(100, 999)),
                         'name' => $agencia->nombre ?? 'Agencia sin nombre',
                         'category' => 'Agencia',
-                        'direccion' => 'Sogamoso, Boyacá',
                         'celular' => $agencia->celular ?? $agencia->correo ?? 'No disponible',
                         'imageUrl' => $urlFoto,
                         'facebook' => $this->redSocialUrl($agencia, 'facebook'),
                         'instagram' => $this->redSocialUrl($agencia, 'instagram'),
                         'correo' => $agencia->correo ?? null,
-                        'web' => null,
-                        'isvisible' => $agencia->is_visible ?? false,
                     ];
                 }
             }

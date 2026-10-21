@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\SyncRedesSociales;
+use App\Http\Resources\RestauranteAdminResource;
+use App\Http\Resources\RestaurantePublicResource;
 use App\Models\DireccionGoogle;
 use App\Models\Foto;
 use App\Models\Restaurante;
@@ -26,11 +28,66 @@ class RestauranteController extends Controller
         $this->driveService = $driveService;
     }
 
-    public function getAllRestaurantes()
+    public function getAllRestaurantes(Request $request)
     {
-        $restaurantes = Restaurante::with(['direccion', 'fotos', 'tipoCocina', 'redesSociales'])->get();
+        // Vitrina pública: solo visibles, campos mínimos y paginado anti-scraping.
+        $perPage = min(max((int) $request->query('per_page', 15), 1), 50);
 
-        return response()->json(['success' => true, 'data' => $restaurantes]);
+        $paginator = Restaurante::select([
+            'id_restaurante', 'nombre', 'celular', 'is_visible', 'id_tipo_cocina', 'id_direccion',
+        ])
+            ->where('is_visible', true)
+            ->with([
+                'direccion:id_direccion,direccion',
+                'fotos:id_foto,url_foto,is_portada,id_restaurante',
+                'tipoCocina:id_tipo_cocina,nombre',
+            ])
+            ->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'data' => RestaurantePublicResource::collection($paginator->getCollection()),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+            ],
+        ]);
+    }
+
+    public function getAllRestaurantesAdmin(Request $request)
+    {
+        // Gestión admin: todos (visibles + ocultos), con contacto e is_visible.
+        // Filtro opcional: ?is_visible=true|false
+        $perPage = min(max((int) $request->query('per_page', 15), 1), 50);
+
+        $query = Restaurante::select([
+            'id_restaurante', 'nombre', 'celular', 'correo',
+            'is_visible', 'id_tipo_cocina', 'id_direccion',
+        ])->with([
+            'direccion:id_direccion,direccion',
+            'fotos:id_foto,url_foto,is_portada,id_restaurante',
+            'tipoCocina:id_tipo_cocina,nombre',
+            'redesSociales:id_redes_sociales,nombre',
+        ]);
+
+        if ($request->has('is_visible')) {
+            $query->where('is_visible', filter_var($request->is_visible, FILTER_VALIDATE_BOOLEAN));
+        }
+
+        $paginator = $query->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'data' => RestauranteAdminResource::collection($paginator->getCollection()),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+            ],
+        ]);
     }
 
     public function getRestauranteById($id)

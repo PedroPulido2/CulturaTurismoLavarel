@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\SyncRedesSociales;
+use App\Http\Resources\HotelAdminResource;
+use App\Http\Resources\HotelPublicResource;
 use App\Models\DireccionGoogle;
 use App\Models\Foto;
 use App\Models\Hotel;
@@ -25,11 +27,64 @@ class HotelController extends Controller
         $this->driveService = $driveService;
     }
 
-    public function getAllHoteles()
+    public function getAllHoteles(Request $request)
     {
-        $hoteles = Hotel::with(['direccion', 'fotos', 'redesSociales'])->get();
+        // Vitrina pública: solo visibles, campos mínimos y paginado anti-scraping.
+        $perPage = min(max((int) $request->query('per_page', 15), 1), 50);
 
-        return response()->json(['success' => true, 'data' => $hoteles]);
+        $paginator = Hotel::select([
+            'id_hotel', 'nombre', 'celular', 'calificacion_salud', 'is_visible', 'id_direccion',
+        ])
+            ->where('is_visible', true)
+            ->with([
+                'direccion:id_direccion,direccion',
+                'fotos:id_foto,url_foto,is_portada,id_hotel',
+                'redesSociales:id_redes_sociales,nombre',
+            ])
+            ->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'data' => HotelPublicResource::collection($paginator->getCollection()),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+            ],
+        ]);
+    }
+
+    public function getAllHotelesAdmin(Request $request)
+    {
+        // Gestión admin: todos (visibles + ocultos), con contacto e is_visible para la columna Estado.
+        // Filtro opcional: ?is_visible=true|false
+        $perPage = min(max((int) $request->query('per_page', 15), 1), 50);
+
+        $query = Hotel::select([
+            'id_hotel', 'nombre', 'rnt', 'celular', 'correo', 'nombre_contacto',
+            'calificacion_salud', 'is_visible', 'id_direccion',
+        ])->with([
+            'direccion:id_direccion,direccion',
+            'fotos:id_foto,url_foto,is_portada,id_hotel',
+            ]);
+
+        if ($request->has('is_visible')) {
+            $query->where('is_visible', filter_var($request->is_visible, FILTER_VALIDATE_BOOLEAN));
+        }
+
+        $paginator = $query->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'data' => HotelAdminResource::collection($paginator->getCollection()),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+            ],
+        ]);
     }
 
     public function getHotelById($id)

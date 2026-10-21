@@ -151,9 +151,26 @@ Route::post('/publico-dirigido/register', [ServicioCulturalController::class, 'c
 Route::delete('/publico-dirigido/{id}', [ServicioCulturalController::class, 'deletePublicoDirigido'])->middleware('modulo:Servicios Culturales');
 
 // ==========================================
+// LISTAS DE GESTIÓN (admin, con token + permiso del módulo)
+// Traen visibles + ocultos, con contacto e `is_visible`
+// para la columna Estado. Soportan ?is_visible= y ?per_page=.
+// La vitrina pública (GET /tourism, /hotel, ...) sigue sin token.
+// ==========================================
+Route::get('/admin/tourism', [AtractivoTuristicoController::class, 'getAllAtractivosAdmin'])->middleware('modulo:Atractivos Turísticos');
+Route::get('/admin/hotel', [HotelController::class, 'getAllHotelesAdmin'])->middleware('modulo:Prestadores Servicios');
+Route::get('/admin/restaurant', [RestauranteController::class, 'getAllRestaurantesAdmin'])->middleware('modulo:Prestadores Servicios');
+Route::get('/admin/agency', [AgenciaController::class, 'getAllAgenciasAdmin'])->middleware('modulo:Prestadores Servicios');
+Route::get('/admin/guide', [GuiaController::class, 'getAllGuiasAdmin'])->middleware('modulo:Prestadores Servicios');
+Route::get('/admin/event', [EventoController::class, 'getAllEventosAdmin'])->middleware('modulo:Eventos');
+
+// ==========================================
 // RUTAS DE DIAGNÓSTICO (Opcionales, para pruebas)
 // ==========================================
 Route::get('/debug-db', function () {
+    // Diagnóstico solo fuera de producción: expone el esquema real.
+    if (app()->isProduction()) {
+        abort(404);
+    }
     try {
         // Consultamos directamente al diccionario de PostgreSQL
         $tablas = DB::select("

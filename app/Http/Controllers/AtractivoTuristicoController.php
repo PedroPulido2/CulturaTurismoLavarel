@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\SyncRedesSociales;
+use App\Http\Resources\AtractivoAdminResource;
+use App\Http\Resources\AtractivoPublicResource;
 use App\Models\AtractivoTuristico;
 use App\Models\DireccionGoogle;
 use App\Models\Foto;
@@ -25,12 +27,63 @@ class AtractivoTuristicoController extends Controller
         $this->driveService = $driveService;
     }
 
-    public function getAllAtractivos()
+    public function getAllAtractivos(Request $request)
     {
-        // todos los atractivos con su dirección, fotos y redes sociales
-        $atractivos = AtractivoTuristico::with(['direccion', 'fotos', 'redesSociales'])->get();
+        // Vitrina pública: solo visibles, campos mínimos y paginado anti-scraping.
+        $perPage = min(max((int) $request->query('per_page', 15), 1), 50);
 
-        return response()->json(['success' => true, 'data' => $atractivos]);
+        $paginator = AtractivoTuristico::select([
+            'id_atractivo_turistico', 'nombre', 'tipo', 'descripcion', 'horario', 'is_visible', 'id_direccion',
+        ])
+            ->where('is_visible', true)
+            ->with([
+                'direccion:id_direccion,direccion',
+                'fotos:id_foto,url_foto,is_portada,id_atractivo_turistico',
+            ])
+            ->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'data' => AtractivoPublicResource::collection($paginator->getCollection()),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+            ],
+        ]);
+    }
+
+    public function getAllAtractivosAdmin(Request $request)
+    {
+        // Gestión admin: todos (visibles + ocultos), con contacto, dirección e is_visible.
+        // Filtro opcional: ?is_visible=true|false
+        $perPage = min(max((int) $request->query('per_page', 15), 1), 50);
+
+        $query = AtractivoTuristico::select([
+            'id_atractivo_turistico', 'nombre', 'tipo', 'descripcion', 'telefono',
+            'horario', 'precio', 'is_visible', 'id_direccion',
+        ])->with([
+            'direccion:id_direccion,direccion',
+            'fotos:id_foto,url_foto,is_portada,id_atractivo_turistico',
+        ]);
+
+        if ($request->has('is_visible')) {
+            $query->where('is_visible', filter_var($request->is_visible, FILTER_VALIDATE_BOOLEAN));
+        }
+
+        $paginator = $query->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'data' => AtractivoAdminResource::collection($paginator->getCollection()),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+            ],
+        ]);
     }
 
     public function getAtractivoById($id)

@@ -10,6 +10,10 @@ class Evento extends Model
 
     protected $primaryKey = 'id_evento';
 
+    public $incrementing = false;
+
+    protected $keyType = 'string';
+
     public $timestamps = false;
 
     protected $casts = [
@@ -18,7 +22,7 @@ class Evento extends Model
     ];
 
     protected $fillable = [
-        'codigo',
+        'id_evento',
         'nombre',
         'descripcion',
         'tipo',

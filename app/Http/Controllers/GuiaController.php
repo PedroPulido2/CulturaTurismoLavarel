@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\GuiaAdminResource;
+use App\Http\Resources\GuiaPublicResource;
 use App\Models\Disponibilidad;
 use App\Models\Especialidad;
 use App\Models\Guia;
@@ -18,11 +20,60 @@ class GuiaController extends Controller
         return ['especialidad', 'disponibilidad', 'tipoPublico'];
     }
 
-    public function getAllGuias()
+    public function getAllGuias(Request $request)
     {
-        $guias = Guia::with($this->relacionesGuia())->get();
+        // Vitrina pública: solo visibles, campos mínimos y paginado anti-scraping.
+        $perPage = min(max((int) $request->query('per_page', 15), 1), 50);
 
-        return response()->json(['success' => true, 'data' => $guias]);
+        $paginator = Guia::select([
+            'id_guia', 'nombre', 'num_tarjeta_profesional', 'rnt', 'celular', 'correo',
+            'idiomas', 'asociacion', 'principales_atractivos', 'descripcion',
+            'is_visible', 'id_especialidad',
+        ])
+            ->where('is_visible', true)
+            ->with(['especialidad:id_especialidad,nombre'])
+            ->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'data' => GuiaPublicResource::collection($paginator->getCollection()),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+            ],
+        ]);
+    }
+
+    public function getAllGuiasAdmin(Request $request)
+    {
+        // Gestión admin: todos (visibles + ocultos), con contacto e is_visible.
+        // Filtro opcional: ?is_visible=true|false
+        $perPage = min(max((int) $request->query('per_page', 15), 1), 50);
+
+        $query = Guia::select([
+            'id_guia', 'nombre', 'n_cedula', 'rnt', 'celular', 'correo',
+            'num_tarjeta_profesional', 'idiomas', 'asociacion',
+            'principales_atractivos', 'descripcion', 'is_visible', 'id_especialidad',
+        ])->with(['especialidad:id_especialidad,nombre']);
+
+        if ($request->has('is_visible')) {
+            $query->where('is_visible', filter_var($request->is_visible, FILTER_VALIDATE_BOOLEAN));
+        }
+
+        $paginator = $query->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'data' => GuiaAdminResource::collection($paginator->getCollection()),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+            ],
+        ]);
     }
 
     public function getGuiaById($id)
