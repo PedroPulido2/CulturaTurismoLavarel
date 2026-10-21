@@ -92,6 +92,7 @@ Route::get('/guide/{id}', [GuiaController::class, 'getGuiaById']);
 Route::post('/guide/register', [GuiaController::class, 'createGuia'])->middleware('modulo:Prestadores Servicios');
 Route::put('/guide/{id}', [GuiaController::class, 'updateGuia'])->middleware('modulo:Prestadores Servicios');
 Route::delete('/guide/{id}', [GuiaController::class, 'deleteGuia'])->middleware('modulo:Prestadores Servicios');
+Route::patch('/guide/{id}/visibility', [GuiaController::class, 'updateVisibility'])->middleware('modulo:Prestadores Servicios');
 
 // --- Eventos (módulo 4) ---
 Route::get('/event', [EventoController::class, 'getAllEventos']);
@@ -99,6 +100,7 @@ Route::get('/event/{id}', [EventoController::class, 'getEventoById']);
 Route::post('/event/register', [EventoController::class, 'createEvento'])->middleware('modulo:Eventos');
 Route::put('/event/{id}', [EventoController::class, 'updateEvento'])->middleware('modulo:Eventos');
 Route::delete('/event/{id}', [EventoController::class, 'deleteEvento'])->middleware('modulo:Eventos');
+Route::patch('/event/{id}/visibility', [EventoController::class, 'updateVisibility'])->middleware('modulo:Eventos');
 
 // ==========================================
 // CATÁLOGOS: lectura pública, escritura con permiso del módulo dueño
@@ -162,6 +164,7 @@ Route::get('/admin/restaurant', [RestauranteController::class, 'getAllRestaurant
 Route::get('/admin/agency', [AgenciaController::class, 'getAllAgenciasAdmin'])->middleware('modulo:Prestadores Servicios');
 Route::get('/admin/guide', [GuiaController::class, 'getAllGuiasAdmin'])->middleware('modulo:Prestadores Servicios');
 Route::get('/admin/event', [EventoController::class, 'getAllEventosAdmin'])->middleware('modulo:Eventos');
+Route::get('/admin/cultural-services', [ServicioCulturalController::class, 'getAllServiciosAdmin'])->middleware('modulo:Servicios Culturales');
 
 // ==========================================
 // RUTAS DE DIAGNÓSTICO (Opcionales, para pruebas)

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\ServicioCulturalAdminResource;
+use App\Http\Resources\ServicioCulturalPublicResource;
 use App\Models\AreaArtistica;
 use App\Models\Foto;
 use App\Models\PublicoDirigido;
@@ -30,14 +32,66 @@ class ServicioCulturalController extends Controller
     }
 
     /**
-     * Obtener todos los servicios culturales con sus relaciones.
+     * Vitrina pública: campos mínimos y paginado anti-scraping.
+     * (La tabla no tiene is_visible: no hay filtro de visibilidad.)
      */
-    public function getAllServicios()
+    public function getAllServicios(Request $request)
     {
         try {
-            $servicios = ServicioCultural::with($this->relacionesServicio())->get();
+            $perPage = min(max((int) $request->query('per_page', 15), 1), 50);
 
-            return response()->json(['success' => true, 'data' => $servicios]);
+            $paginator = ServicioCultural::select([
+                'id_servicio_cultural', 'nombre', 'biografia', 'contacto',
+                'id_tipo_servicio', 'id_publico_dirigido', 'id_area_artistica',
+            ])->with([
+                'tipoServicio:id_tipo_servicio,nombre',
+                'publicoDirigido:id_publico_dirigido,nombre',
+                'areaArtistica:id_area_artistica,nombre',
+                'fotos:id_foto,url_foto,is_portada,id_servicio_cultural',
+            ])->paginate($perPage);
+
+            return response()->json([
+                'success' => true,
+                'data' => ServicioCulturalPublicResource::collection($paginator->getCollection()),
+                'meta' => [
+                    'current_page' => $paginator->currentPage(),
+                    'per_page' => $paginator->perPage(),
+                    'total' => $paginator->total(),
+                    'last_page' => $paginator->lastPage(),
+                ],
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener los servicios culturales: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Lista de gestión (admin): pública + datos de contacto, paginada.
+     */
+    public function getAllServiciosAdmin(Request $request)
+    {
+        try {
+            $perPage = min(max((int) $request->query('per_page', 15), 1), 50);
+
+            $paginator = ServicioCultural::select([
+                'id_servicio_cultural', 'nit', 'nombre', 'telefono', 'correo', 'contacto',
+                'biografia', 'reconocimientos',
+                'id_tipo_servicio', 'id_publico_dirigido', 'id_area_artistica',
+            ])->with($this->relacionesServicio())->paginate($perPage);
+
+            return response()->json([
+                'success' => true,
+                'data' => ServicioCulturalAdminResource::collection($paginator->getCollection()),
+                'meta' => [
+                    'current_page' => $paginator->currentPage(),
+                    'per_page' => $paginator->perPage(),
+                    'total' => $paginator->total(),
+                    'last_page' => $paginator->lastPage(),
+                ],
+            ]);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,

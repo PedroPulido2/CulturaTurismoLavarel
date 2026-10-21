@@ -331,6 +331,43 @@ class EventoController extends Controller
         }
     }
 
+    public function updateVisibility(Request $request, $id)
+    {
+        $evento = Evento::find($id);
+
+        if (! $evento) {
+            return response()->json(['success' => false, 'message' => 'Evento no encontrado'], 404);
+        }
+
+        $validador = Validator::make($request->all(), [
+            'is_visible' => 'required|boolean',
+        ]);
+
+        if ($validador->fails()) {
+            return response()->json(['success' => false, 'errors' => $validador->errors()], 400);
+        }
+
+        try {
+            // Se actualiza únicamente el campo de visibilidad
+            $evento->is_visible = $request->is_visible;
+            $evento->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Visibilidad actualizada correctamente',
+                'data' => [
+                    'id_evento' => $evento->id_evento,
+                    'is_visible' => $evento->is_visible,
+                ],
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar visibilidad: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function deleteEvento($id)
     {
         $evento = Evento::with('fotos')->find($id);

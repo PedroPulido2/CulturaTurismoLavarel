@@ -249,6 +249,43 @@ class GuiaController extends Controller
         }
     }
 
+    public function updateVisibility(Request $request, $id)
+    {
+        $guia = Guia::find($id);
+
+        if (! $guia) {
+            return response()->json(['success' => false, 'message' => 'Guía no encontrado'], 404);
+        }
+
+        $validador = Validator::make($request->all(), [
+            'is_visible' => 'required|boolean',
+        ]);
+
+        if ($validador->fails()) {
+            return response()->json(['success' => false, 'errors' => $validador->errors()], 400);
+        }
+
+        try {
+            // Se actualiza únicamente el campo de visibilidad
+            $guia->is_visible = $request->is_visible;
+            $guia->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Visibilidad actualizada correctamente',
+                'data' => [
+                    'id_guia' => $guia->id_guia,
+                    'is_visible' => $guia->is_visible,
+                ],
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar visibilidad: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
     /**
      * Catálogo de especialidades de guía.
      */

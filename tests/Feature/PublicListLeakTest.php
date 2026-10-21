@@ -8,7 +8,9 @@ use App\Http\Resources\EventoPublicResource;
 use App\Http\Resources\GuiaPublicResource;
 use App\Http\Resources\HotelPublicResource;
 use App\Http\Resources\RestaurantePublicResource;
+use App\Http\Resources\ServicioCulturalPublicResource;
 use App\Models\Agencia;
+use App\Models\AreaArtistica;
 use App\Models\AtractivoTuristico;
 use App\Models\DireccionGoogle;
 use App\Models\Especialidad;
@@ -16,9 +18,12 @@ use App\Models\Evento;
 use App\Models\Foto;
 use App\Models\Guia;
 use App\Models\Hotel;
+use App\Models\PublicoDirigido;
 use App\Models\RedesSocial;
 use App\Models\Restaurante;
+use App\Models\ServicioCultural;
 use App\Models\TipoCocina;
+use App\Models\TipoServicio;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Tests\TestCase;
@@ -180,5 +185,39 @@ class PublicListLeakTest extends TestCase
         $this->assertArrayNotHasKey('contacto', $data);
         $this->assertArrayNotHasKey('asistentes_estimados', $data);
         $this->assertArrayNotHasKey('observaciones', $data);
+    }
+
+    public function test_servicio_cultural_oculta_nit_telefono_correo(): void
+    {
+        $request = Request::create('/', 'GET');
+        $s = new ServicioCultural([
+            'nombre' => 'S', 'nit' => 123, 'telefono' => 3005, 'correo' => 's@x.com',
+            'contacto' => 'Persona', 'biografia' => 'Bio', 'reconocimientos' => 'Premio',
+        ]);
+        $s->id_servicio_cultural = 10;
+        $s->id_tipo_servicio = 1;
+        $s->id_area_artistica = 2;
+        $s->id_publico_dirigido = 3;
+        $tipo = new TipoServicio(['nombre' => 'Música']);
+        $tipo->id_tipo_servicio = 1;
+        $area = new AreaArtistica(['nombre' => 'Artes']);
+        $area->id_area_artistica = 2;
+        $publico = new PublicoDirigido(['nombre' => 'General']);
+        $publico->id_publico_dirigido = 3;
+        $s->setRelation('tipoServicio', $tipo);
+        $s->setRelation('areaArtistica', $area);
+        $s->setRelation('publicoDirigido', $publico);
+        $s->setRelation('fotos', $this->fotos(['http://img/s.jpg'], 'id_servicio_cultural', '10'));
+
+        $data = (new ServicioCulturalPublicResource($s))->toArray($request);
+
+        $this->assertSame('Música', $data['tipo_servicio']);
+        $this->assertSame('Artes', $data['area_artistica']);
+        $this->assertSame('General', $data['publico_dirigido']);
+        $this->assertSame('http://img/s.jpg', $data['url_foto']);
+        $this->assertArrayNotHasKey('nit', $data);
+        $this->assertArrayNotHasKey('telefono', $data);
+        $this->assertArrayNotHasKey('correo', $data);
+        $this->assertArrayNotHasKey('reconocimientos', $data);
     }
 }

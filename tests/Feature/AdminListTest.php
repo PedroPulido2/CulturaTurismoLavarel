@@ -17,6 +17,13 @@ class AdminListTest extends TestCase
         $this->getJson('/api/admin/agency')->assertStatus(401);
         $this->getJson('/api/admin/guide')->assertStatus(401);
         $this->getJson('/api/admin/event')->assertStatus(401);
+        $this->getJson('/api/admin/cultural-services')->assertStatus(401);
+    }
+
+    public function test_visibility_sin_token_es_401(): void
+    {
+        $this->patchJson('/api/guide/GUI001/visibility', ['is_visible' => true])->assertStatus(401);
+        $this->patchJson('/api/event/EVT001/visibility', ['is_visible' => true])->assertStatus(401);
     }
 
     public function test_hotel_admin_expone_estado_y_contacto(): void
