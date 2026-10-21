@@ -189,6 +189,10 @@ class PublicListLeakTest extends TestCase
 
     public function test_servicio_cultural_oculta_nit_telefono_correo(): void
     {
+        $servicio = new ServicioCultural;
+        $this->assertContains('is_visible', $servicio->getFillable());
+        $this->assertSame('boolean', $servicio->getCasts()['is_visible']);
+
         $request = Request::create('/', 'GET');
         $s = new ServicioCultural([
             'nombre' => 'S', 'nit' => 123, 'telefono' => 3005, 'correo' => 's@x.com',

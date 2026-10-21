@@ -7,8 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Lista de gestión (admin): pública + datos de contacto.
- * (La tabla no tiene is_visible: no hay columna Estado.)
+ * Lista de gestión (admin): pública + datos de contacto e is_visible
+ * para la columna Estado.
  *
  * @mixin ServicioCultural
  */
@@ -34,6 +34,7 @@ class ServicioCulturalAdminResource extends JsonResource
             'id_publico_dirigido' => $this->id_publico_dirigido,
             'publico_dirigido' => $this->whenLoaded('publicoDirigido', fn () => $this->publicoDirigido?->nombre),
             'url_foto' => $this->portadaUrl(),
+            'is_visible' => (bool) $this->is_visible,
         ];
     }
 }

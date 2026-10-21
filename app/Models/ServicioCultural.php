@@ -15,6 +15,10 @@ class ServicioCultural extends Model
 
     public $timestamps = false;
 
+    protected $casts = [
+        'is_visible' => 'boolean',
+    ];
+
     protected $fillable = [
         'id_servicio_cultural',
         'nit',
@@ -24,6 +28,7 @@ class ServicioCultural extends Model
         'contacto',
         'biografia',
         'reconocimientos',
+        'is_visible',
         'id_tipo_servicio',
         'id_publico_dirigido',
         'id_area_artistica',

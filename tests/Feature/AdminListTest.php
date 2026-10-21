@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Http\Resources\HotelAdminResource;
+use App\Http\Resources\ServicioCulturalAdminResource;
 use App\Models\Hotel;
+use App\Models\ServicioCultural;
 use Illuminate\Http\Request;
 use Tests\TestCase;
 
@@ -46,5 +48,19 @@ class AdminListTest extends TestCase
         // Columnas Contacto de la tabla admin
         $this->assertSame(3001234567, $data['celular']);
         $this->assertSame('h@x.com', $data['correo']);
+    }
+
+    public function test_servicio_cultural_admin_expone_estado(): void
+    {
+        $servicio = new ServicioCultural(['nombre' => 'S', 'contacto' => 'Persona']);
+        $servicio->id_servicio_cultural = 10;
+        $servicio->setRelation('tipoServicio', null);
+        $servicio->setRelation('areaArtistica', null);
+        $servicio->setRelation('publicoDirigido', null);
+        $servicio->setRelation('fotos', collect());
+
+        $data = (new ServicioCulturalAdminResource($servicio))->toArray(Request::create('/', 'GET'));
+
+        $this->assertArrayHasKey('is_visible', $data);
     }
 }

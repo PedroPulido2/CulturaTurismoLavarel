@@ -32,8 +32,7 @@ class ServicioCulturalController extends Controller
     }
 
     /**
-     * Vitrina pública: campos mínimos y paginado anti-scraping.
-     * (La tabla no tiene is_visible: no hay filtro de visibilidad.)
+     * Vitrina pública: solo visibles, campos mínimos y paginado anti-scraping.
      */
     public function getAllServicios(Request $request)
     {
@@ -43,12 +42,14 @@ class ServicioCulturalController extends Controller
             $paginator = ServicioCultural::select([
                 'id_servicio_cultural', 'nombre', 'biografia', 'contacto',
                 'id_tipo_servicio', 'id_publico_dirigido', 'id_area_artistica',
-            ])->with([
-                'tipoServicio:id_tipo_servicio,nombre',
-                'publicoDirigido:id_publico_dirigido,nombre',
-                'areaArtistica:id_area_artistica,nombre',
-                'fotos:id_foto,url_foto,is_portada,id_servicio_cultural',
-            ])->paginate($perPage);
+            ])
+                ->where('is_visible', true)
+                ->with([
+                    'tipoServicio:id_tipo_servicio,nombre',
+                    'publicoDirigido:id_publico_dirigido,nombre',
+                    'areaArtistica:id_area_artistica,nombre',
+                    'fotos:id_foto,url_foto,is_portada,id_servicio_cultural',
+                ])->paginate($perPage);
 
             return response()->json([
                 'success' => true,
@@ -69,18 +70,25 @@ class ServicioCulturalController extends Controller
     }
 
     /**
-     * Lista de gestión (admin): pública + datos de contacto, paginada.
+     * Lista de gestión (admin): todos (visibles + ocultos), con contacto
+     * e is_visible para la columna Estado. Filtro opcional: ?is_visible=true|false
      */
     public function getAllServiciosAdmin(Request $request)
     {
         try {
             $perPage = min(max((int) $request->query('per_page', 15), 1), 50);
 
-            $paginator = ServicioCultural::select([
+            $query = ServicioCultural::select([
                 'id_servicio_cultural', 'nit', 'nombre', 'telefono', 'correo', 'contacto',
-                'biografia', 'reconocimientos',
+                'biografia', 'reconocimientos', 'is_visible',
                 'id_tipo_servicio', 'id_publico_dirigido', 'id_area_artistica',
-            ])->with($this->relacionesServicio())->paginate($perPage);
+            ])->with($this->relacionesServicio());
+
+            if ($request->has('is_visible')) {
+                $query->where('is_visible', filter_var($request->is_visible, FILTER_VALIDATE_BOOLEAN));
+            }
+
+            $paginator = $query->paginate($perPage);
 
             return response()->json([
                 'success' => true,
@@ -141,6 +149,7 @@ class ServicioCulturalController extends Controller
             'contacto' => 'nullable|string|max:255',
             'biografia' => 'nullable|string',
             'reconocimientos' => 'nullable|string',
+            'is_visible' => 'nullable|boolean',
             'fotos' => 'sometimes|array',
             'fotos.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120',
         ], [
@@ -168,6 +177,7 @@ class ServicioCulturalController extends Controller
                 'contacto' => $request->contacto,
                 'biografia' => $request->biografia,
                 'reconocimientos' => $request->reconocimientos,
+                'is_visible' => filter_var($request->is_visible, FILTER_VALIDATE_BOOLEAN),
             ]);
 
             // Procesar y subir fotos a Drive (galería en la tabla unificada fotos)
@@ -232,6 +242,7 @@ class ServicioCulturalController extends Controller
             'contacto' => 'nullable|string|max:255',
             'biografia' => 'nullable|string',
             'reconocimientos' => 'nullable|string',
+            'is_visible' => 'nullable|boolean',
             'nuevas_fotos' => 'sometimes|array',
             'nuevas_fotos.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120',
             'fotos_a_eliminar' => 'sometimes|array',
@@ -277,6 +288,10 @@ class ServicioCulturalController extends Controller
                 'biografia',
                 'reconocimientos',
             ]));
+
+            if ($request->has('is_visible')) {
+                $servicio->is_visible = filter_var($request->is_visible, FILTER_VALIDATE_BOOLEAN);
+            }
 
             $servicio->save();
 
