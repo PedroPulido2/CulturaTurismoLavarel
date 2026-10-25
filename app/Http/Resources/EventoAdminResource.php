@@ -26,6 +26,9 @@ class EventoAdminResource extends JsonResource
             'direccion' => $this->whenLoaded('direccion', fn () => $this->direccion?->direccion),
             'url_foto' => $this->portadaUrl(),
             'is_visible' => (bool) $this->is_visible,
+            'cancelado' => (bool) $this->cancelado,
+            'motivo_cancelacion' => $this->motivo_cancelacion,
+            'estado' => $this->estado,
         ];
     }
 }

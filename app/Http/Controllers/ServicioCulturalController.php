@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\AplicaFiltrosListado;
+use App\Http\Controllers\Concerns\RechazaCambioDePk;
 use App\Http\Resources\ServicioCulturalAdminResource;
 use App\Http\Resources\ServicioCulturalPublicResource;
 use App\Models\AreaArtistica;
@@ -19,6 +21,9 @@ use Illuminate\Validation\Rule;
 
 class ServicioCulturalController extends Controller
 {
+    use AplicaFiltrosListado;
+    use RechazaCambioDePk;
+
     protected $driveService;
 
     public function __construct(GoogleDriveService $driveService)
@@ -33,13 +38,15 @@ class ServicioCulturalController extends Controller
 
     /**
      * Vitrina pública: solo visibles, campos mínimos y paginado anti-scraping.
+     * Filtros: ?search= (nombre, biografia) y ?id_area_artistica=, ?id_tipo_servicio=,
+     * ?id_publico_dirigido= exactos.
      */
     public function getAllServicios(Request $request)
     {
         try {
             $perPage = min(max((int) $request->query('per_page', 15), 1), 50);
 
-            $paginator = ServicioCultural::select([
+            $query = ServicioCultural::select([
                 'id_servicio_cultural', 'nombre', 'biografia', 'contacto',
                 'id_tipo_servicio', 'id_publico_dirigido', 'id_area_artistica',
             ])
@@ -49,7 +56,14 @@ class ServicioCulturalController extends Controller
                     'publicoDirigido:id_publico_dirigido,nombre',
                     'areaArtistica:id_area_artistica,nombre',
                     'fotos:id_foto,url_foto,is_portada,id_servicio_cultural',
-                ])->paginate($perPage);
+                ]);
+
+            $this->aplicarBusqueda($query, $request, ['nombre', 'biografia']);
+            $this->aplicarFiltroExacto($query, $request, 'id_area_artistica', 'id_area_artistica');
+            $this->aplicarFiltroExacto($query, $request, 'id_tipo_servicio', 'id_tipo_servicio');
+            $this->aplicarFiltroExacto($query, $request, 'id_publico_dirigido', 'id_publico_dirigido');
+
+            $paginator = $query->paginate($perPage);
 
             return response()->json([
                 'success' => true,
@@ -71,7 +85,9 @@ class ServicioCulturalController extends Controller
 
     /**
      * Lista de gestión (admin): todos (visibles + ocultos), con contacto
-     * e is_visible para la columna Estado. Filtro opcional: ?is_visible=true|false
+     * e is_visible para la columna Estado.
+     * Filtros opcionales: ?is_visible=, ?search=, ?id_area_artistica=,
+     * ?id_tipo_servicio=, ?id_publico_dirigido=.
      */
     public function getAllServiciosAdmin(Request $request)
     {
@@ -87,6 +103,11 @@ class ServicioCulturalController extends Controller
             if ($request->has('is_visible')) {
                 $query->where('is_visible', filter_var($request->is_visible, FILTER_VALIDATE_BOOLEAN));
             }
+
+            $this->aplicarBusqueda($query, $request, ['nombre', 'biografia']);
+            $this->aplicarFiltroExacto($query, $request, 'id_area_artistica', 'id_area_artistica');
+            $this->aplicarFiltroExacto($query, $request, 'id_tipo_servicio', 'id_tipo_servicio');
+            $this->aplicarFiltroExacto($query, $request, 'id_publico_dirigido', 'id_publico_dirigido');
 
             $paginator = $query->paginate($perPage);
 
@@ -231,6 +252,11 @@ class ServicioCulturalController extends Controller
             ], 404);
         }
 
+        // El ID es la PK inmutable: el front puede reenviarlo si coincide con la URL.
+        if ($respuesta = $this->rechazarCambioDePk($request, 'id_servicio_cultural', $id)) {
+            return $respuesta;
+        }
+
         $validador = Validator::make($request->all(), [
             'id_tipo_servicio' => ['sometimes', 'integer', Rule::exists(TipoServicio::class, 'id_tipo_servicio')],
             'id_publico_dirigido' => ['nullable', 'integer', Rule::exists(PublicoDirigido::class, 'id_publico_dirigido')],
@@ -350,6 +376,46 @@ class ServicioCulturalController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error al actualizar el servicio cultural: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Actualizar únicamente la visibilidad de un servicio cultural.
+     */
+    public function updateVisibility(Request $request, $id)
+    {
+        $servicio = ServicioCultural::find($id);
+
+        if (! $servicio) {
+            return response()->json(['success' => false, 'message' => 'Servicio cultural no encontrado'], 404);
+        }
+
+        $validador = Validator::make($request->all(), [
+            'is_visible' => 'required|boolean',
+        ]);
+
+        if ($validador->fails()) {
+            return response()->json(['success' => false, 'errors' => $validador->errors()], 400);
+        }
+
+        try {
+            // Se actualiza únicamente el campo de visibilidad
+            $servicio->is_visible = $request->is_visible;
+            $servicio->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Visibilidad actualizada correctamente',
+                'data' => [
+                    'id_servicio_cultural' => $servicio->id_servicio_cultural,
+                    'is_visible' => $servicio->is_visible,
+                ],
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar visibilidad: '.$e->getMessage(),
             ], 500);
         }
     }

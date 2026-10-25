@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\AplicaFiltrosListado;
+use App\Http\Controllers\Concerns\RechazaCambioDePk;
 use App\Http\Controllers\Concerns\SyncRedesSociales;
 use App\Http\Resources\AgenciaAdminResource;
 use App\Http\Resources\AgenciaPublicResource;
@@ -18,6 +20,8 @@ use Illuminate\Validation\Rule;
 
 class AgenciaController extends Controller
 {
+    use AplicaFiltrosListado;
+    use RechazaCambioDePk;
     use SyncRedesSociales;
 
     protected $driveService;
@@ -31,17 +35,22 @@ class AgenciaController extends Controller
     {
         // Vitrina pública: solo visibles, campos mínimos y paginado anti-scraping.
         // La tabla agencia no tiene dirección: se omite.
+        // Filtros: ?search= (nombre, destinos_principales) y ?id_tipo_agencia= exacto.
         $perPage = min(max((int) $request->query('per_page', 15), 1), 50);
 
-        $paginator = Agencia::select([
+        $query = Agencia::select([
             'id_agencia', 'nombre', 'celular', 'correo', 'is_visible',
         ])
             ->where('is_visible', true)
             ->with([
                 'fotos:id_foto,url_foto,is_portada,id_agencia',
                 'redesSociales:id_redes_sociales,nombre',
-            ])
-            ->paginate($perPage);
+            ]);
+
+        $this->aplicarBusqueda($query, $request, ['nombre', 'destinos_principales']);
+        $this->aplicarFiltroExacto($query, $request, 'id_tipo_agencia', 'id_tipo_agencia');
+
+        $paginator = $query->paginate($perPage);
 
         return response()->json([
             'success' => true,
@@ -58,7 +67,7 @@ class AgenciaController extends Controller
     public function getAllAgenciasAdmin(Request $request)
     {
         // Gestión admin: todas (visibles + ocultas), con contacto e is_visible.
-        // Filtro opcional: ?is_visible=true|false
+        // Filtros opcionales: ?is_visible=, ?search=, ?id_tipo_agencia= exacto.
         $perPage = min(max((int) $request->query('per_page', 15), 1), 50);
 
         $query = Agencia::select([
@@ -72,6 +81,9 @@ class AgenciaController extends Controller
         if ($request->has('is_visible')) {
             $query->where('is_visible', filter_var($request->is_visible, FILTER_VALIDATE_BOOLEAN));
         }
+
+        $this->aplicarBusqueda($query, $request, ['nombre', 'destinos_principales']);
+        $this->aplicarFiltroExacto($query, $request, 'id_tipo_agencia', 'id_tipo_agencia');
 
         $paginator = $query->paginate($perPage);
 
@@ -230,6 +242,11 @@ class AgenciaController extends Controller
 
         if (! $agencia) {
             return response()->json(['success' => false, 'message' => 'Agencia no encontrada'], 404);
+        }
+
+        // El ID es la PK inmutable: el front puede reenviarlo si coincide con la URL.
+        if ($respuesta = $this->rechazarCambioDePk($request, 'id_agencia', $id)) {
+            return $respuesta;
         }
 
         $validador = Validator::make($request->all(), array_merge([

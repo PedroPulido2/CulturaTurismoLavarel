@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\AplicaFiltrosListado;
+use App\Http\Controllers\Concerns\RechazaCambioDePk;
 use App\Http\Controllers\Concerns\SyncRedesSociales;
 use App\Http\Resources\AtractivoAdminResource;
 use App\Http\Resources\AtractivoPublicResource;
@@ -18,6 +20,8 @@ use Illuminate\Validation\Rule;
 
 class AtractivoTuristicoController extends Controller
 {
+    use AplicaFiltrosListado;
+    use RechazaCambioDePk;
     use SyncRedesSociales;
 
     protected $driveService;
@@ -30,17 +34,22 @@ class AtractivoTuristicoController extends Controller
     public function getAllAtractivos(Request $request)
     {
         // Vitrina pública: solo visibles, campos mínimos y paginado anti-scraping.
+        // Filtros: ?search= (nombre, descripcion) y ?tipo= exacto.
         $perPage = min(max((int) $request->query('per_page', 15), 1), 50);
 
-        $paginator = AtractivoTuristico::select([
+        $query = AtractivoTuristico::select([
             'id_atractivo_turistico', 'nombre', 'tipo', 'descripcion', 'horario', 'is_visible', 'id_direccion',
         ])
             ->where('is_visible', true)
             ->with([
                 'direccion:id_direccion,direccion',
                 'fotos:id_foto,url_foto,is_portada,id_atractivo_turistico',
-            ])
-            ->paginate($perPage);
+            ]);
+
+        $this->aplicarBusqueda($query, $request, ['nombre', 'descripcion']);
+        $this->aplicarFiltroExacto($query, $request, 'tipo', 'tipo');
+
+        $paginator = $query->paginate($perPage);
 
         return response()->json([
             'success' => true,
@@ -57,7 +66,7 @@ class AtractivoTuristicoController extends Controller
     public function getAllAtractivosAdmin(Request $request)
     {
         // Gestión admin: todos (visibles + ocultos), con contacto, dirección e is_visible.
-        // Filtro opcional: ?is_visible=true|false
+        // Filtros opcionales: ?is_visible=true|false, ?search= (nombre, descripcion), ?tipo= exacto.
         $perPage = min(max((int) $request->query('per_page', 15), 1), 50);
 
         $query = AtractivoTuristico::select([
@@ -71,6 +80,9 @@ class AtractivoTuristicoController extends Controller
         if ($request->has('is_visible')) {
             $query->where('is_visible', filter_var($request->is_visible, FILTER_VALIDATE_BOOLEAN));
         }
+
+        $this->aplicarBusqueda($query, $request, ['nombre', 'descripcion']);
+        $this->aplicarFiltroExacto($query, $request, 'tipo', 'tipo');
 
         $paginator = $query->paginate($perPage);
 
@@ -198,6 +210,11 @@ class AtractivoTuristicoController extends Controller
 
         if (! $atractivo) {
             return response()->json(['success' => false, 'message' => 'Atractivo turístico no encontrado'], 404);
+        }
+
+        // El ID es la PK inmutable: el front puede reenviarlo si coincide con la URL.
+        if ($respuesta = $this->rechazarCambioDePk($request, 'id_atractivo_turistico', $id)) {
+            return $respuesta;
         }
 
         $validador = Validator::make($request->all(), array_merge([

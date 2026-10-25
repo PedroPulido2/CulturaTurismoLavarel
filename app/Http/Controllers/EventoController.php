@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\AplicaFiltrosListado;
+use App\Http\Controllers\Concerns\RechazaCambioDePk;
 use App\Http\Resources\EventoAdminResource;
 use App\Http\Resources\EventoPublicResource;
 use App\Models\DireccionGoogle;
@@ -11,12 +13,16 @@ use App\Services\GoogleDriveService;
 use App\Services\PortadaService;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
 class EventoController extends Controller
 {
+    use AplicaFiltrosListado;
+    use RechazaCambioDePk;
+
     protected $driveService;
 
     public function __construct(GoogleDriveService $driveService)
@@ -27,18 +33,25 @@ class EventoController extends Controller
     public function getAllEventos(Request $request)
     {
         // Vitrina pública: solo visibles, campos mínimos y paginado anti-scraping.
+        // Filtros: ?search= (nombre, descripcion, organizador), ?tipo= exacto,
+        // ?estado=programado|en_curso|finalizado|cancelado|sin_fecha.
         $perPage = min(max((int) $request->query('per_page', 15), 1), 50);
 
-        $paginator = Evento::select([
+        $query = Evento::select([
             'id_evento', 'nombre', 'fecha_inicio', 'fecha_fin', 'tipo',
-            'organizador', 'is_visible', 'id_direccion',
+            'organizador', 'is_visible', 'cancelado', 'motivo_cancelacion', 'id_direccion',
         ])
             ->where('is_visible', true)
             ->with([
                 'direccion:id_direccion,direccion',
                 'fotos:id_foto,url_foto,is_portada,id_evento',
-            ])
-            ->paginate($perPage);
+            ]);
+
+        $this->aplicarBusqueda($query, $request, ['nombre', 'descripcion', 'organizador']);
+        $this->aplicarFiltroExacto($query, $request, 'tipo', 'tipo');
+        $this->aplicarFiltroEstado($query, $request);
+
+        $paginator = $query->paginate($perPage);
 
         return response()->json([
             'success' => true,
@@ -55,12 +68,12 @@ class EventoController extends Controller
     public function getAllEventosAdmin(Request $request)
     {
         // Gestión admin: todos (visibles + ocultos), con contacto e is_visible.
-        // Filtro opcional: ?is_visible=true|false
+        // Filtros opcionales: ?is_visible=, ?search=, ?tipo= exacto, ?estado=.
         $perPage = min(max((int) $request->query('per_page', 15), 1), 50);
 
         $query = Evento::select([
             'id_evento', 'nombre', 'fecha_inicio', 'fecha_fin', 'tipo',
-            'organizador', 'contacto', 'is_visible', 'id_direccion',
+            'organizador', 'contacto', 'is_visible', 'cancelado', 'motivo_cancelacion', 'id_direccion',
         ])->with([
             'direccion:id_direccion,direccion',
             'fotos:id_foto,url_foto,is_portada,id_evento',
@@ -69,6 +82,10 @@ class EventoController extends Controller
         if ($request->has('is_visible')) {
             $query->where('is_visible', filter_var($request->is_visible, FILTER_VALIDATE_BOOLEAN));
         }
+
+        $this->aplicarBusqueda($query, $request, ['nombre', 'descripcion', 'organizador']);
+        $this->aplicarFiltroExacto($query, $request, 'tipo', 'tipo');
+        $this->aplicarFiltroEstado($query, $request);
 
         $paginator = $query->paginate($perPage);
 
@@ -82,6 +99,54 @@ class EventoController extends Controller
                 'last_page' => $paginator->lastPage(),
             ],
         ]);
+    }
+
+    /**
+     * Filtro ?estado= sobre el estado calculado (misma regla que
+     * Evento::getEstadoAttribute, con hoy en America/Bogota).
+     * Valor inválido: se ignora.
+     */
+    protected function aplicarFiltroEstado($query, Request $request): void
+    {
+        if (! $request->has('estado')) {
+            return;
+        }
+
+        $estado = strtolower(trim((string) $request->query('estado')));
+
+        if (! in_array($estado, Evento::ESTADOS_EVENTO, true)) {
+            return;
+        }
+
+        if ($estado === 'cancelado') {
+            $query->where('cancelado', true);
+
+            return;
+        }
+
+        $query->where('cancelado', false);
+
+        if ($estado === 'sin_fecha') {
+            $query->whereNull('fecha_inicio')->whereNull('fecha_fin');
+
+            return;
+        }
+
+        $hoy = Carbon::today('America/Bogota')->toDateString();
+
+        if ($estado === 'programado') {
+            $query->where('fecha_inicio', '>', $hoy);
+        } elseif ($estado === 'finalizado') {
+            $query->where('fecha_fin', '<', $hoy);
+        } else { // en_curso: dentro del rango, excluyendo sin_fecha
+            $query->where(function ($q) use ($hoy) {
+                $q->whereNull('fecha_inicio')->orWhere('fecha_inicio', '<=', $hoy);
+            })->where(function ($q) use ($hoy) {
+                $q->whereNull('fecha_fin')->orWhere('fecha_fin', '>=', $hoy);
+            })->where(function ($q) {
+                $q->whereNotNull('fecha_inicio')->orWhereNotNull('fecha_fin');
+            });
+        }
     }
 
     public function getEventoById($id)
@@ -111,6 +176,8 @@ class EventoController extends Controller
             'impacto_economico' => 'nullable|numeric',
             'observaciones' => 'nullable|string',
             'is_visible' => 'nullable|boolean',
+            'cancelado' => 'nullable|boolean',
+            'motivo_cancelacion' => 'nullable|string',
             'direccion' => 'required|string',
             'latitud' => 'nullable|numeric',
             'longitud' => 'nullable|numeric',
@@ -148,10 +215,15 @@ class EventoController extends Controller
                 'asistentes_reales',
                 'impacto_economico',
                 'observaciones',
+                'motivo_cancelacion',
             ]);
 
             if ($request->has('is_visible')) {
                 $datos['is_visible'] = filter_var($request->is_visible, FILTER_VALIDATE_BOOLEAN);
+            }
+
+            if ($request->has('cancelado')) {
+                $datos['cancelado'] = filter_var($request->cancelado, FILTER_VALIDATE_BOOLEAN);
             }
 
             $datos['id_direccion'] = $direccion->id_direccion;
@@ -200,6 +272,11 @@ class EventoController extends Controller
             return response()->json(['success' => false, 'message' => 'Evento no encontrado'], 404);
         }
 
+        // El ID es la PK inmutable: el front puede reenviarlo si coincide con la URL.
+        if ($respuesta = $this->rechazarCambioDePk($request, 'id_evento', $id)) {
+            return $respuesta;
+        }
+
         $validador = Validator::make($request->all(), [
             'nombre' => 'sometimes|string|max:80',
             'descripcion' => 'nullable|string',
@@ -213,6 +290,8 @@ class EventoController extends Controller
             'impacto_economico' => 'nullable|numeric',
             'observaciones' => 'nullable|string',
             'is_visible' => 'nullable|boolean',
+            'cancelado' => 'nullable|boolean',
+            'motivo_cancelacion' => 'nullable|string',
             'nuevas_fotos' => 'sometimes|array', // Nuevas fotos para la galería
             'nuevas_fotos.*' => 'image|mimes:jpeg,png,jpg|max:5120',
             'fotos_a_eliminar' => 'sometimes|array', // IDs de fotos de la galería a borrar
@@ -264,10 +343,19 @@ class EventoController extends Controller
                 'asistentes_reales',
                 'impacto_economico',
                 'observaciones',
+                'motivo_cancelacion',
             ]);
 
             if ($request->has('is_visible')) {
                 $datos['is_visible'] = filter_var($request->is_visible, FILTER_VALIDATE_BOOLEAN);
+            }
+
+            if ($request->has('cancelado')) {
+                $datos['cancelado'] = filter_var($request->cancelado, FILTER_VALIDATE_BOOLEAN);
+                // Reactivar sin motivo limpia el motivo anterior.
+                if (! $datos['cancelado'] && ! $request->filled('motivo_cancelacion')) {
+                    $datos['motivo_cancelacion'] = null;
+                }
             }
 
             $evento->update($datos);
@@ -366,6 +454,42 @@ class EventoController extends Controller
                 'message' => 'Error al actualizar visibilidad: '.$e->getMessage(),
             ], 500);
         }
+    }
+
+    public function cancelEvento(Request $request, $id)
+    {
+        $evento = Evento::find($id);
+
+        if (! $evento) {
+            return response()->json(['success' => false, 'message' => 'Evento no encontrado'], 404);
+        }
+
+        $validador = Validator::make($request->all(), [
+            'cancelado' => 'required|boolean',
+            'motivo_cancelacion' => 'nullable|string',
+        ]);
+
+        if ($validador->fails()) {
+            return response()->json(['success' => false, 'errors' => $validador->errors()], 400);
+        }
+
+        $evento->cancelado = $request->cancelado;
+        // Reactivar sin motivo limpia el motivo anterior.
+        $evento->motivo_cancelacion = $request->filled('motivo_cancelacion')
+            ? $request->motivo_cancelacion
+            : ($request->cancelado ? $evento->motivo_cancelacion : null);
+        $evento->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => $evento->cancelado ? 'Evento cancelado' : 'Evento reactivado',
+            'data' => [
+                'id_evento' => $evento->id_evento,
+                'cancelado' => (bool) $evento->cancelado,
+                'motivo_cancelacion' => $evento->motivo_cancelacion,
+                'estado' => $evento->estado,
+            ],
+        ]);
     }
 
     public function deleteEvento($id)

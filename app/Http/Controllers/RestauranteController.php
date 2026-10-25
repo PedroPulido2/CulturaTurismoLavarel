@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\AplicaFiltrosListado;
+use App\Http\Controllers\Concerns\RechazaCambioDePk;
 use App\Http\Controllers\Concerns\SyncRedesSociales;
 use App\Http\Resources\RestauranteAdminResource;
 use App\Http\Resources\RestaurantePublicResource;
@@ -19,6 +21,8 @@ use Illuminate\Validation\Rule;
 
 class RestauranteController extends Controller
 {
+    use AplicaFiltrosListado;
+    use RechazaCambioDePk;
     use SyncRedesSociales;
 
     protected $driveService;
@@ -31,9 +35,10 @@ class RestauranteController extends Controller
     public function getAllRestaurantes(Request $request)
     {
         // Vitrina pública: solo visibles, campos mínimos y paginado anti-scraping.
+        // Filtros: ?search= (nombre, platos_principales) y ?id_tipo_cocina= exacto.
         $perPage = min(max((int) $request->query('per_page', 15), 1), 50);
 
-        $paginator = Restaurante::select([
+        $query = Restaurante::select([
             'id_restaurante', 'nombre', 'celular', 'is_visible', 'id_tipo_cocina', 'id_direccion',
         ])
             ->where('is_visible', true)
@@ -41,8 +46,12 @@ class RestauranteController extends Controller
                 'direccion:id_direccion,direccion',
                 'fotos:id_foto,url_foto,is_portada,id_restaurante',
                 'tipoCocina:id_tipo_cocina,nombre',
-            ])
-            ->paginate($perPage);
+            ]);
+
+        $this->aplicarBusqueda($query, $request, ['nombre', 'platos_principales']);
+        $this->aplicarFiltroExacto($query, $request, 'id_tipo_cocina', 'id_tipo_cocina');
+
+        $paginator = $query->paginate($perPage);
 
         return response()->json([
             'success' => true,
@@ -59,7 +68,7 @@ class RestauranteController extends Controller
     public function getAllRestaurantesAdmin(Request $request)
     {
         // Gestión admin: todos (visibles + ocultos), con contacto e is_visible.
-        // Filtro opcional: ?is_visible=true|false
+        // Filtros opcionales: ?is_visible=, ?search=, ?id_tipo_cocina= exacto.
         $perPage = min(max((int) $request->query('per_page', 15), 1), 50);
 
         $query = Restaurante::select([
@@ -75,6 +84,9 @@ class RestauranteController extends Controller
         if ($request->has('is_visible')) {
             $query->where('is_visible', filter_var($request->is_visible, FILTER_VALIDATE_BOOLEAN));
         }
+
+        $this->aplicarBusqueda($query, $request, ['nombre', 'platos_principales']);
+        $this->aplicarFiltroExacto($query, $request, 'id_tipo_cocina', 'id_tipo_cocina');
 
         $paginator = $query->paginate($perPage);
 
@@ -233,6 +245,11 @@ class RestauranteController extends Controller
 
         if (! $restaurante) {
             return response()->json(['success' => false, 'message' => 'Restaurante no encontrado'], 404);
+        }
+
+        // El ID es la PK inmutable: el front puede reenviarlo si coincide con la URL.
+        if ($respuesta = $this->rechazarCambioDePk($request, 'id_restaurante', $id)) {
+            return $respuesta;
         }
 
         $validador = Validator::make($request->all(), array_merge([

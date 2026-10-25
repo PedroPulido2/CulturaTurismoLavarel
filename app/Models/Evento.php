@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 class Evento extends Model
 {
@@ -18,6 +19,7 @@ class Evento extends Model
 
     protected $casts = [
         'is_visible' => 'boolean',
+        'cancelado' => 'boolean',
         'impacto_economico' => 'decimal:6',
     ];
 
@@ -35,8 +37,41 @@ class Evento extends Model
         'impacto_economico',
         'observaciones',
         'is_visible',
+        'cancelado',
+        'motivo_cancelacion',
         'id_direccion',
     ];
+
+    /**
+     * Estados posibles: programado | en_curso | finalizado | cancelado | sin_fecha.
+     * Calculado del servidor (zona America/Bogota); `cancelado` precede a las fechas.
+     */
+    public const ESTADOS_EVENTO = ['programado', 'en_curso', 'finalizado', 'cancelado', 'sin_fecha'];
+
+    public function getEstadoAttribute(): string
+    {
+        if ($this->cancelado) {
+            return 'cancelado';
+        }
+
+        $hoy = Carbon::today('America/Bogota')->toDateString();
+        $inicio = $this->fecha_inicio ? substr((string) $this->fecha_inicio, 0, 10) : null;
+        $fin = $this->fecha_fin ? substr((string) $this->fecha_fin, 0, 10) : null;
+
+        if ($inicio === null && $fin === null) {
+            return 'sin_fecha';
+        }
+
+        if ($inicio !== null && $hoy < $inicio) {
+            return 'programado';
+        }
+
+        if ($fin !== null && $hoy > $fin) {
+            return 'finalizado';
+        }
+
+        return 'en_curso';
+    }
 
     // Relación con la dirección
     public function direccion()

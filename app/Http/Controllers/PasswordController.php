@@ -192,6 +192,56 @@ class PasswordController extends Controller
         ]);
     }
 
+    /**
+     * Cambia la contraseña de un usuario autenticado (dentro del sistema).
+     * Exige la contraseña actual y la nueva (con confirmación).
+     */
+    public function cambiar(Request $request)
+    {
+        $validador = Validator::make($request->all(), [
+            'current_password' => 'required|string',
+            'password' => 'required|string|min:8|confirmed|different:current_password',
+        ], [
+            'current_password.required' => 'La contraseña actual es obligatoria.',
+            'password.required' => 'La nueva contraseña es obligatoria.',
+            'password.min' => 'La nueva contraseña debe tener al menos 8 caracteres.',
+            'password.confirmed' => 'La confirmación de la nueva contraseña no coincide.',
+            'password.different' => 'La nueva contraseña debe ser diferente a la actual.',
+        ]);
+
+        if ($validador->fails()) {
+            return response()->json(['success' => false, 'errors' => $validador->errors()], 400);
+        }
+
+        $idUsuario = $request->attributes->get('auth_user_id');
+
+        if (! $idUsuario) {
+            return response()->json(['success' => false, 'message' => 'Token inválido o expirado'], 401);
+        }
+
+        $login = Login::where('id_usuario', $idUsuario)->first();
+
+        if (! $login) {
+            return response()->json(['success' => false, 'message' => 'Credenciales no encontradas'], 404);
+        }
+
+        if (! Hash::check($request->current_password, $login->password)) {
+            return response()->json(['success' => false, 'message' => 'La contraseña actual es incorrecta'], 401);
+        }
+
+        try {
+            $login->password = Hash::make($request->password);
+            $login->intentos_fallidos = 0;
+            $login->save();
+
+            return response()->json(['success' => true, 'message' => 'Contraseña actualizada correctamente']);
+        } catch (Exception $e) {
+            Log::error('Error cambiando contraseña: '.$e->getMessage());
+
+            return response()->json(['success' => false, 'message' => 'No se pudo actualizar la contraseña'], 500);
+        }
+    }
+
     private function buscarPorToken(string $tokenPlano): ?Usuario
     {
         $usuario = Usuario::where('reset_token_hash', hash('sha256', $tokenPlano))->first();

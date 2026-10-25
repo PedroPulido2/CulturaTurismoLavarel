@@ -28,6 +28,8 @@ Route::post('/password/activar', [PasswordController::class, 'activar']);
 Route::post('/password/restablecer', [PasswordController::class, 'restablecer']);
 Route::post('/password/olvide', [PasswordController::class, 'olvide']);
 Route::post('/password/reenviar-activacion', [PasswordController::class, 'reenviarActivacion']);
+// Cambio de contraseña con sesión iniciada (pide actual + nueva).
+Route::put('/password/cambiar', [PasswordController::class, 'cambiar'])->middleware('auth.jwt');
 
 // ==========================================
 // RUTAS DE USUARIOS / PROFILES (UserController)
@@ -66,6 +68,8 @@ Route::delete('/tourism/{id}', [AtractivoTuristicoController::class, 'deleteAtra
 Route::patch('/tourism/{id}/visibility', [AtractivoTuristicoController::class, 'updateVisibility'])->middleware('modulo:Atractivos Turísticos');
 
 // --- Prestadores Servicios (módulo 2): Hotel / Restaurante / Agencia / Guía ---
+// /hotel/destacados va antes de /hotel/{id} o {id} capturaría "destacados".
+Route::get('/hotel/destacados', [HotelController::class, 'getHotelesDestacados']);
 Route::get('/hotel', [HotelController::class, 'getAllHoteles']);
 Route::get('/hotel/{id}', [HotelController::class, 'getHotelById']);
 Route::post('/hotel/register', [HotelController::class, 'createHotel'])->middleware('modulo:Prestadores Servicios');
@@ -101,6 +105,7 @@ Route::post('/event/register', [EventoController::class, 'createEvento'])->middl
 Route::put('/event/{id}', [EventoController::class, 'updateEvento'])->middleware('modulo:Eventos');
 Route::delete('/event/{id}', [EventoController::class, 'deleteEvento'])->middleware('modulo:Eventos');
 Route::patch('/event/{id}/visibility', [EventoController::class, 'updateVisibility'])->middleware('modulo:Eventos');
+Route::patch('/event/{id}/cancel', [EventoController::class, 'cancelEvento'])->middleware('modulo:Eventos');
 
 // ==========================================
 // CATÁLOGOS: lectura pública, escritura con permiso del módulo dueño
@@ -139,6 +144,7 @@ Route::get('/cultural-services/{id}', [ServicioCulturalController::class, 'getSe
 Route::post('/cultural-services/register', [ServicioCulturalController::class, 'createServicio'])->middleware('modulo:Servicios Culturales');
 Route::put('/cultural-services/{id}', [ServicioCulturalController::class, 'updateServicio'])->middleware('modulo:Servicios Culturales');
 Route::delete('/cultural-services/{id}', [ServicioCulturalController::class, 'deleteServicio'])->middleware('modulo:Servicios Culturales');
+Route::patch('/cultural-services/{id}/visibility', [ServicioCulturalController::class, 'updateVisibility'])->middleware('modulo:Servicios Culturales');
 
 Route::get('/areas-artisticas', [ServicioCulturalController::class, 'getAreasArtisticas']);
 Route::post('/areas-artisticas/register', [ServicioCulturalController::class, 'createAreasArtisticas'])->middleware('modulo:Servicios Culturales');

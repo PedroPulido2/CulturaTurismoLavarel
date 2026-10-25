@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\AplicaFiltrosListado;
+use App\Http\Controllers\Concerns\RechazaCambioDePk;
 use App\Http\Resources\GuiaAdminResource;
 use App\Http\Resources\GuiaPublicResource;
 use App\Models\Disponibilidad;
@@ -15,6 +17,9 @@ use Illuminate\Validation\Rule;
 
 class GuiaController extends Controller
 {
+    use AplicaFiltrosListado;
+    use RechazaCambioDePk;
+
     protected function relacionesGuia(): array
     {
         return ['especialidad', 'disponibilidad', 'tipoPublico'];
@@ -23,16 +28,24 @@ class GuiaController extends Controller
     public function getAllGuias(Request $request)
     {
         // Vitrina pública: solo visibles, campos mínimos y paginado anti-scraping.
+        // Filtros: ?search= (nombre, idiomas, principales_atractivos, descripcion)
+        // y ?id_especialidad=, ?id_disponibilidad=, ?id_tipo_publico= exactos.
         $perPage = min(max((int) $request->query('per_page', 15), 1), 50);
 
-        $paginator = Guia::select([
+        $query = Guia::select([
             'id_guia', 'nombre', 'num_tarjeta_profesional', 'rnt', 'celular', 'correo',
             'idiomas', 'asociacion', 'principales_atractivos', 'descripcion',
             'is_visible', 'id_especialidad',
         ])
             ->where('is_visible', true)
-            ->with(['especialidad:id_especialidad,nombre'])
-            ->paginate($perPage);
+            ->with(['especialidad:id_especialidad,nombre']);
+
+        $this->aplicarBusqueda($query, $request, ['nombre', 'idiomas', 'principales_atractivos', 'descripcion']);
+        $this->aplicarFiltroExacto($query, $request, 'id_especialidad', 'id_especialidad');
+        $this->aplicarFiltroExacto($query, $request, 'id_disponibilidad', 'id_disponibilidad');
+        $this->aplicarFiltroExacto($query, $request, 'id_tipo_publico', 'id_tipo_publico');
+
+        $paginator = $query->paginate($perPage);
 
         return response()->json([
             'success' => true,
@@ -49,7 +62,7 @@ class GuiaController extends Controller
     public function getAllGuiasAdmin(Request $request)
     {
         // Gestión admin: todos (visibles + ocultos), con contacto e is_visible.
-        // Filtro opcional: ?is_visible=true|false
+        // Filtros opcionales: ?is_visible=, ?search=, ?id_especialidad=, ?id_disponibilidad=, ?id_tipo_publico=.
         $perPage = min(max((int) $request->query('per_page', 15), 1), 50);
 
         $query = Guia::select([
@@ -61,6 +74,11 @@ class GuiaController extends Controller
         if ($request->has('is_visible')) {
             $query->where('is_visible', filter_var($request->is_visible, FILTER_VALIDATE_BOOLEAN));
         }
+
+        $this->aplicarBusqueda($query, $request, ['nombre', 'idiomas', 'principales_atractivos', 'descripcion']);
+        $this->aplicarFiltroExacto($query, $request, 'id_especialidad', 'id_especialidad');
+        $this->aplicarFiltroExacto($query, $request, 'id_disponibilidad', 'id_disponibilidad');
+        $this->aplicarFiltroExacto($query, $request, 'id_tipo_publico', 'id_tipo_publico');
 
         $paginator = $query->paginate($perPage);
 
@@ -160,6 +178,11 @@ class GuiaController extends Controller
 
         if (! $guia) {
             return response()->json(['success' => false, 'message' => 'Guía no encontrado'], 404);
+        }
+
+        // El ID es la PK inmutable: el front puede reenviarlo si coincide con la URL.
+        if ($respuesta = $this->rechazarCambioDePk($request, 'id_guia', $id)) {
+            return $respuesta;
         }
 
         $validador = Validator::make($request->all(), [

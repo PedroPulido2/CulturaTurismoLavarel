@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\AplicaFiltrosListado;
+use App\Http\Controllers\Concerns\RechazaCambioDePk;
 use App\Http\Controllers\Concerns\SyncRedesSociales;
 use App\Http\Resources\HotelAdminResource;
 use App\Http\Resources\HotelPublicResource;
@@ -18,6 +20,8 @@ use Illuminate\Validation\Rule;
 
 class HotelController extends Controller
 {
+    use AplicaFiltrosListado;
+    use RechazaCambioDePk;
     use SyncRedesSociales;
 
     protected $driveService;
@@ -30,9 +34,11 @@ class HotelController extends Controller
     public function getAllHoteles(Request $request)
     {
         // Vitrina pública: solo visibles, campos mínimos y paginado anti-scraping.
+        // Filtros: ?search= (nombre). Orden: ?sort=-calificacion_salud,nombre
+        // (alias ?ordering=), siempre antes del paginate().
         $perPage = min(max((int) $request->query('per_page', 15), 1), 50);
 
-        $paginator = Hotel::select([
+        $query = Hotel::select([
             'id_hotel', 'nombre', 'celular', 'calificacion_salud', 'is_visible', 'id_direccion',
         ])
             ->where('is_visible', true)
@@ -40,8 +46,47 @@ class HotelController extends Controller
                 'direccion:id_direccion,direccion',
                 'fotos:id_foto,url_foto,is_portada,id_hotel',
                 'redesSociales:id_redes_sociales,nombre',
-            ])
-            ->paginate($perPage);
+            ]);
+
+        $this->aplicarBusqueda($query, $request, ['nombre']);
+        $this->aplicarOrdenamiento($query, $request, ['calificacion_salud', 'nombre', 'id_hotel']);
+
+        $paginator = $query->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'data' => HotelPublicResource::collection($paginator->getCollection()),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+            ],
+        ]);
+    }
+
+    public function getHotelesDestacados(Request $request)
+    {
+        // Ranking público para la vitrina: mejores calificacion_salud primero,
+        // nulos al final, solo visibles. ?per_page= (default 8, tope 50).
+        $perPage = min(max((int) $request->query('per_page', 8), 1), 50);
+
+        $query = Hotel::select([
+            'id_hotel', 'nombre', 'celular', 'calificacion_salud', 'is_visible', 'id_direccion',
+        ])
+            ->where('is_visible', true)
+            ->with([
+                'direccion:id_direccion,direccion',
+                'fotos:id_foto,url_foto,is_portada,id_hotel',
+                'redesSociales:id_redes_sociales,nombre',
+            ]);
+
+        $this->aplicarBusqueda($query, $request, ['nombre']);
+
+        $query->orderByRaw('calificacion_salud DESC NULLS LAST')
+            ->orderBy('id_hotel', 'asc');
+
+        $paginator = $query->paginate($perPage);
 
         return response()->json([
             'success' => true,
@@ -58,7 +103,7 @@ class HotelController extends Controller
     public function getAllHotelesAdmin(Request $request)
     {
         // Gestión admin: todos (visibles + ocultos), con contacto e is_visible para la columna Estado.
-        // Filtro opcional: ?is_visible=true|false
+        // Filtros opcionales: ?is_visible= y ?search= (nombre). Orden: ?sort= (alias ?ordering=).
         $perPage = min(max((int) $request->query('per_page', 15), 1), 50);
 
         $query = Hotel::select([
@@ -67,11 +112,14 @@ class HotelController extends Controller
         ])->with([
             'direccion:id_direccion,direccion',
             'fotos:id_foto,url_foto,is_portada,id_hotel',
-            ]);
+        ]);
 
         if ($request->has('is_visible')) {
             $query->where('is_visible', filter_var($request->is_visible, FILTER_VALIDATE_BOOLEAN));
         }
+
+        $this->aplicarBusqueda($query, $request, ['nombre']);
+        $this->aplicarOrdenamiento($query, $request, ['calificacion_salud', 'nombre', 'id_hotel']);
 
         $paginator = $query->paginate($perPage);
 
@@ -260,6 +308,11 @@ class HotelController extends Controller
 
         if (! $hotel) {
             return response()->json(['success' => false, 'message' => 'Hotel no encontrado'], 404);
+        }
+
+        // El ID es la PK inmutable: el front puede reenviarlo si coincide con la URL.
+        if ($respuesta = $this->rechazarCambioDePk($request, 'id_hotel', $id)) {
+            return $respuesta;
         }
 
         $validador = Validator::make($request->all(), array_merge([

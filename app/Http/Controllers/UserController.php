@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\RechazaCambioDePk;
 use App\Http\Resources\UsuarioDetailResource;
 use App\Http\Resources\UsuarioListResource;
 use App\Models\Login;
@@ -22,6 +23,8 @@ use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
+    use RechazaCambioDePk;
+
     protected $driveService;
 
     protected $tokens;
@@ -205,6 +208,11 @@ class UserController extends Controller
                 'success' => false,
                 'message' => 'Perfil no encontrado',
             ], 404);
+        }
+
+        // El ID es la PK inmutable: el front puede reenviarlo si coincide con la URL.
+        if ($respuesta = $this->rechazarCambioDePk($request, 'id_usuario', $id_usuario)) {
+            return $respuesta;
         }
 
         // Defensa en profundidad por si la ruta se expone sin middleware:
