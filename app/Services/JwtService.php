@@ -15,7 +15,7 @@ class JwtService
 {
     public function __construct(
         private ?string $secret = null,
-        private int $ttlHoras = 24,
+        private int $ttlHoras = 12,
     ) {}
 
     private function resolvedSecret(): string
