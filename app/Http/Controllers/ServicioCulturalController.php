@@ -11,7 +11,7 @@ use App\Models\Foto;
 use App\Models\PublicoDirigido;
 use App\Models\ServicioCultural;
 use App\Models\TipoServicio;
-use App\Services\GoogleDriveService;
+use App\Services\FotoStorageService;
 use App\Services\PortadaService;
 use Exception;
 use Illuminate\Http\Request;
@@ -24,11 +24,11 @@ class ServicioCulturalController extends Controller
     use AplicaFiltrosListado;
     use RechazaCambioDePk;
 
-    protected $driveService;
+    protected $fotos;
 
-    public function __construct(GoogleDriveService $driveService)
+    public function __construct(FotoStorageService $fotos)
     {
-        $this->driveService = $driveService;
+        $this->fotos = $fotos;
     }
 
     protected function relacionesServicio(): array
@@ -201,14 +201,13 @@ class ServicioCulturalController extends Controller
                 'is_visible' => filter_var($request->is_visible, FILTER_VALIDATE_BOOLEAN),
             ]);
 
-            // Procesar y subir fotos a Drive (galería en la tabla unificada fotos)
+            // Procesar y guardar fotos en el almacenamiento local (galería en la tabla unificada fotos)
             if ($request->hasFile('fotos')) {
-                $idCarpetaDestino = env('ID_CARPETA_SERVICIOS_CULTURALES');
-                $archivos = $request->file('fotos');
+                $fotosGuardadas = [];
 
-                foreach ($archivos as $index => $archivo) {
-                    $nombreArchivo = 'sc_'.$servicio->id_servicio_cultural.'_'.time().'_'.$index.'.'.$archivo->getClientOriginalExtension();
-                    $rutaFoto = $this->driveService->uploadToDrive($archivo, $nombreArchivo, $idCarpetaDestino);
+                foreach ($request->file('fotos') as $index => $archivo) {
+                    $rutaFoto = $this->fotos->guardar($archivo, 'servicios', 'sc_'.$servicio->id_servicio_cultural);
+                    $fotosGuardadas[] = $rutaFoto;
 
                     Foto::create([
                         'url_foto' => $rutaFoto,
@@ -229,7 +228,13 @@ class ServicioCulturalController extends Controller
                 'data' => $servicio,
             ], 201);
         } catch (Exception $e) {
+            $revertirFotos = DB::transactionLevel() > 0;
             DB::rollBack();
+            if ($revertirFotos) {
+                foreach (($fotosGuardadas ?? []) as $urlFoto) {
+                    $this->fotos->eliminar($urlFoto);
+                }
+            }
 
             return response()->json([
                 'success' => false,
@@ -321,28 +326,23 @@ class ServicioCulturalController extends Controller
 
             $servicio->save();
 
-            // Eliminar fotos especificadas (de Drive y de la DB)
+            // Eliminar fotos especificadas (del almacenamiento local y de la DB)
             if ($request->has('fotos_a_eliminar')) {
                 $fotosAEliminar = Foto::whereIn('id_foto', $request->fotos_a_eliminar)
                     ->where('id_servicio_cultural', $id)
                     ->get();
 
                 foreach ($fotosAEliminar as $foto) {
-                    if ($foto->url_foto) {
-                        $this->driveService->deleteFromDrive($foto->url_foto);
-                    }
+                    $this->fotos->eliminar($foto->url_foto);
                     $foto->delete();
                 }
             }
 
             // Subir y guardar las nuevas fotos
             if ($request->hasFile('nuevas_fotos')) {
-                $idCarpetaDestino = env('ID_CARPETA_SERVICIOS_CULTURALES');
-                $archivos = $request->file('nuevas_fotos');
-
-                foreach ($archivos as $index => $archivo) {
-                    $nombreArchivo = 'sc_'.$id.'_'.time().'_'.$index.'.'.$archivo->getClientOriginalExtension();
-                    $rutaFoto = $this->driveService->uploadToDrive($archivo, $nombreArchivo, $idCarpetaDestino);
+                foreach ($request->file('nuevas_fotos') as $archivo) {
+                    $rutaFoto = $this->fotos->guardar($archivo, 'servicios', 'sc_'.$id);
+                    $nuevasGuardadas[] = $rutaFoto;
 
                     Foto::create([
                         'url_foto' => $rutaFoto,
@@ -371,7 +371,13 @@ class ServicioCulturalController extends Controller
                 'data' => $servicio,
             ]);
         } catch (Exception $e) {
+            $revertirFotos = DB::transactionLevel() > 0;
             DB::rollBack();
+            if ($revertirFotos) {
+                foreach (($nuevasGuardadas ?? []) as $urlFoto) {
+                    $this->fotos->eliminar($urlFoto);
+                }
+            }
 
             return response()->json([
                 'success' => false,
@@ -437,11 +443,9 @@ class ServicioCulturalController extends Controller
         try {
             DB::beginTransaction();
 
-            // Eliminar fotos de Google Drive
+            // Eliminar fotos del almacenamiento local
             foreach ($servicio->fotos as $foto) {
-                if ($foto->url_foto) {
-                    $this->driveService->deleteFromDrive($foto->url_foto);
-                }
+                $this->fotos->eliminar($foto->url_foto);
             }
 
             // Las fotos se eliminan en cascada

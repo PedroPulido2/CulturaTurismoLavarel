@@ -11,7 +11,7 @@ use App\Models\DireccionGoogle;
 use App\Models\Foto;
 use App\Models\Restaurante;
 use App\Models\TipoCocina;
-use App\Services\GoogleDriveService;
+use App\Services\FotoStorageService;
 use App\Services\PortadaService;
 use Exception;
 use Illuminate\Http\Request;
@@ -25,11 +25,11 @@ class RestauranteController extends Controller
     use RechazaCambioDePk;
     use SyncRedesSociales;
 
-    protected $driveService;
+    protected $fotos;
 
-    public function __construct(GoogleDriveService $driveService)
+    public function __construct(FotoStorageService $fotos)
     {
-        $this->driveService = $driveService;
+        $this->fotos = $fotos;
     }
 
     public function getAllRestaurantes(Request $request)
@@ -169,12 +169,11 @@ class RestauranteController extends Controller
             );
 
             if ($request->hasFile('fotos')) {
-                $idCarpetaDestino = env('ID_CARPETA_FOTOS_RESTAURANTES');
-                $archivos = $request->file('fotos');
+                $fotosGuardadas = [];
 
-                foreach ($archivos as $index => $archivo) {
-                    $nombreArchivo = 'restaurante_'.$restaurante->id_restaurante.'_'.time().'_'.$index.'.'.$archivo->getClientOriginalExtension();
-                    $rutaFoto = $this->driveService->uploadToDrive($archivo, $nombreArchivo, $idCarpetaDestino);
+                foreach ($request->file('fotos') as $index => $archivo) {
+                    $rutaFoto = $this->fotos->guardar($archivo, 'restaurantes', 'restaurante_'.$restaurante->id_restaurante);
+                    $fotosGuardadas[] = $rutaFoto;
 
                     Foto::create([
                         'url_foto' => $rutaFoto,
@@ -193,7 +192,13 @@ class RestauranteController extends Controller
                 'data' => $restaurante,
             ], 201);
         } catch (Exception $e) {
+            $revertirFotos = DB::transactionLevel() > 0;
             DB::rollBack();
+            if ($revertirFotos) {
+                foreach (($fotosGuardadas ?? []) as $urlFoto) {
+                    $this->fotos->eliminar($urlFoto);
+                }
+            }
 
             return response()->json([
                 'success' => false,
@@ -332,20 +337,15 @@ class RestauranteController extends Controller
                     ->get();
 
                 foreach ($fotosAEliminar as $foto) {
-                    if ($foto->url_foto) {
-                        $this->driveService->deleteFromDrive($foto->url_foto);
-                    }
+                    $this->fotos->eliminar($foto->url_foto);
                     $foto->delete();
                 }
             }
 
             if ($request->hasFile('nuevas_fotos')) {
-                $idCarpetaDestino = env('ID_CARPETA_FOTOS_RESTAURANTES');
-                $archivos = $request->file('nuevas_fotos');
-
-                foreach ($archivos as $index => $archivo) {
-                    $nombreArchivo = 'restaurante_'.$id.'_'.time().'_'.$index.'.'.$archivo->getClientOriginalExtension();
-                    $rutaFoto = $this->driveService->uploadToDrive($archivo, $nombreArchivo, $idCarpetaDestino);
+                foreach ($request->file('nuevas_fotos') as $archivo) {
+                    $rutaFoto = $this->fotos->guardar($archivo, 'restaurantes', 'restaurante_'.$id);
+                    $nuevasGuardadas[] = $rutaFoto;
 
                     Foto::create([
                         'url_foto' => $rutaFoto,
@@ -373,7 +373,13 @@ class RestauranteController extends Controller
                 'data' => $restaurante,
             ]);
         } catch (Exception $e) {
+            $revertirFotos = DB::transactionLevel() > 0;
             DB::rollBack();
+            if ($revertirFotos) {
+                foreach (($nuevasGuardadas ?? []) as $urlFoto) {
+                    $this->fotos->eliminar($urlFoto);
+                }
+            }
 
             return response()->json([
                 'success' => false,
@@ -394,9 +400,7 @@ class RestauranteController extends Controller
             DB::beginTransaction();
 
             foreach ($restaurante->fotos as $foto) {
-                if ($foto->url_foto) {
-                    $this->driveService->deleteFromDrive($foto->url_foto);
-                }
+                $this->fotos->eliminar($foto->url_foto);
             }
 
             $idDireccion = $restaurante->id_direccion;

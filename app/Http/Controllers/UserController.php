@@ -10,7 +10,7 @@ use App\Models\Modulo;
 use App\Models\Rol;
 use App\Models\Usuario;
 use App\Services\CorreoService;
-use App\Services\GoogleDriveService;
+use App\Services\FotoStorageService;
 use App\Services\PasswordTokenService;
 use Exception;
 use Illuminate\Http\Request;
@@ -25,13 +25,13 @@ class UserController extends Controller
 {
     use RechazaCambioDePk;
 
-    protected $driveService;
+    protected $fotos;
 
     protected $tokens;
 
-    public function __construct(GoogleDriveService $driveService, PasswordTokenService $tokens)
+    public function __construct(FotoStorageService $fotos, PasswordTokenService $tokens)
     {
-        $this->driveService = $driveService;
+        $this->fotos = $fotos;
         $this->tokens = $tokens;
     }
 
@@ -136,11 +136,8 @@ class UserController extends Controller
 
             // Si se proporciona foto al momento de crear el usuario
             if ($request->hasFile('url_foto')) {
-                $archivo = $request->file('url_foto');
-                $nombreArchivo = $usuario->id_usuario.'.'.$archivo->getClientOriginalExtension();
-                $idCarpetaDestino = env('ID_CARPETA_FOTOS_PERFILES');
-
-                $usuario->url_foto = $this->driveService->uploadToDrive($archivo, $nombreArchivo, $idCarpetaDestino);
+                $fotoGuardada = $this->fotos->guardar($request->file('url_foto'), 'perfiles', 'perfil_'.$usuario->id_usuario);
+                $usuario->url_foto = $fotoGuardada;
                 $usuario->save();
             }
 
@@ -186,7 +183,11 @@ class UserController extends Controller
                 'data' => new UsuarioDetailResource($usuario),
             ], 201);
         } catch (Exception $e) {
+            $revertirFotos = DB::transactionLevel() > 0;
             DB::rollBack();
+            if ($revertirFotos) {
+                $this->fotos->eliminar($fotoGuardada ?? null);
+            }
 
             return response()->json([
                 'success' => false,
@@ -262,20 +263,14 @@ class UserController extends Controller
             // id_rol viaja directo por fill al ser FK única del usuario.
             $usuarioExist->fill($request->except(['url_foto', 'id_usuario']));
 
-            // Se adjuntó una imagen nueva (se elimina la anterior y se sube la nueva)
+            // Se adjuntó una imagen nueva (se elimina la anterior y se guarda la nueva)
             if ($request->hasFile('url_foto')) {
                 // 1. Eliminar la anterior
-                if ($usuarioExist->url_foto) {
-                    $this->driveService->deleteFromDrive($usuarioExist->url_foto);
-                }
+                $this->fotos->eliminar($usuarioExist->url_foto);
 
-                // 2. Subir la nueva
-                $archivo = $request->file('url_foto');
-                $nombreArchivo = $usuarioExist->id_usuario.'.'.$archivo->getClientOriginalExtension();
-                $idCarpetaDestino = env('ID_CARPETA_FOTOS_PERFILES');
-
-                // 3. Asignar la nueva URL al modelo
-                $usuarioExist->url_foto = $this->driveService->uploadToDrive($archivo, $nombreArchivo, $idCarpetaDestino);
+                // 2. Guardar la nueva y asignar la nueva URL al modelo
+                $fotoGuardada = $this->fotos->guardar($request->file('url_foto'), 'perfiles', 'perfil_'.$usuarioExist->id_usuario);
+                $usuarioExist->url_foto = $fotoGuardada;
             }
 
             $usuarioExist->save();
@@ -292,7 +287,11 @@ class UserController extends Controller
                 'data' => new UsuarioDetailResource($usuarioExist),
             ]);
         } catch (Exception $e) {
+            $revertirFotos = DB::transactionLevel() > 0;
             DB::rollBack();
+            if ($revertirFotos) {
+                $this->fotos->eliminar($fotoGuardada ?? null);
+            }
 
             return response()->json([
                 'success' => false,
@@ -312,10 +311,8 @@ class UserController extends Controller
             ], 404);
         }
 
-        // Borrar la imagen de Drive
-        if ($usuario->url_foto) {
-            $this->driveService->deleteFromDrive($usuario->url_foto);
-        }
+        // Borrar la imagen del almacenamiento local
+        $this->fotos->eliminar($usuario->url_foto);
 
         // El borrado en cascada elimina login y módulos asignados
         $usuario->delete();

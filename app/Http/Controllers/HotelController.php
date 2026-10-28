@@ -10,7 +10,7 @@ use App\Http\Resources\HotelPublicResource;
 use App\Models\DireccionGoogle;
 use App\Models\Foto;
 use App\Models\Hotel;
-use App\Services\GoogleDriveService;
+use App\Services\FotoStorageService;
 use App\Services\PortadaService;
 use Exception;
 use Illuminate\Http\Request;
@@ -24,11 +24,11 @@ class HotelController extends Controller
     use RechazaCambioDePk;
     use SyncRedesSociales;
 
-    protected $driveService;
+    protected $fotos;
 
-    public function __construct(GoogleDriveService $driveService)
+    public function __construct(FotoStorageService $fotos)
     {
-        $this->driveService = $driveService;
+        $this->fotos = $fotos;
     }
 
     public function getAllHoteles(Request $request)
@@ -221,6 +221,8 @@ class HotelController extends Controller
             return response()->json(['success' => false, 'errors' => $validador->errors()], 400);
         }
 
+        $fotosGuardadas = [];
+
         try {
             DB::beginTransaction();
 
@@ -265,15 +267,11 @@ class HotelController extends Controller
                 $request->input('redes_sociales')
             );
 
-            // Procesar y subir las fotos a Drive
+            // Procesar y guardar las fotos en el almacenamiento local
             if ($request->hasFile('fotos')) {
-                $idCarpetaDestino = env('ID_CARPETA_FOTOS_HOTELES');
-                $archivos = $request->file('fotos');
-
-                foreach ($archivos as $index => $archivo) {
-                    $nombreArchivo = 'hotel_'.$hotel->id_hotel.'_'.time().'_'.$index.'.'.$archivo->getClientOriginalExtension();
-
-                    $rutaFoto = $this->driveService->uploadToDrive($archivo, $nombreArchivo, $idCarpetaDestino);
+                foreach ($request->file('fotos') as $index => $archivo) {
+                    $rutaFoto = $this->fotos->guardar($archivo, 'hoteles', 'hotel_'.$hotel->id_hotel);
+                    $fotosGuardadas[] = $rutaFoto;
 
                     Foto::create([
                         'url_foto' => $rutaFoto,
@@ -293,7 +291,13 @@ class HotelController extends Controller
                 'data' => $hotel,
             ], 201);
         } catch (Exception $e) {
+            $revertirFotos = DB::transactionLevel() > 0;
             DB::rollBack();
+            if ($revertirFotos) {
+                foreach ($fotosGuardadas as $urlFoto) {
+                    $this->fotos->eliminar($urlFoto);
+                }
+            }
 
             return response()->json([
                 'success' => false,
@@ -367,6 +371,8 @@ class HotelController extends Controller
             }
         }
 
+        $fotosGuardadas = [];
+
         try {
             DB::beginTransaction();
 
@@ -421,21 +427,16 @@ class HotelController extends Controller
                     ->get();
 
                 foreach ($fotosAEliminar as $foto) {
-                    if ($foto->url_foto) {
-                        $this->driveService->deleteFromDrive($foto->url_foto);
-                    }
+                    $this->fotos->eliminar($foto->url_foto);
                     $foto->delete();
                 }
             }
 
             // Subir nuevas fotos
             if ($request->hasFile('nuevas_fotos')) {
-                $idCarpetaDestino = env('ID_CARPETA_FOTOS_HOTELES');
-                $archivos = $request->file('nuevas_fotos');
-
-                foreach ($archivos as $index => $archivo) {
-                    $nombreArchivo = 'hotel_'.$id.'_'.time().'_'.$index.'.'.$archivo->getClientOriginalExtension();
-                    $rutaFoto = $this->driveService->uploadToDrive($archivo, $nombreArchivo, $idCarpetaDestino);
+                foreach ($request->file('nuevas_fotos') as $archivo) {
+                    $rutaFoto = $this->fotos->guardar($archivo, 'hoteles', 'hotel_'.$id);
+                    $fotosGuardadas[] = $rutaFoto;
 
                     Foto::create([
                         'url_foto' => $rutaFoto,
@@ -464,7 +465,13 @@ class HotelController extends Controller
                 'data' => $hotel,
             ]);
         } catch (Exception $e) {
+            $revertirFotos = DB::transactionLevel() > 0;
             DB::rollBack();
+            if ($revertirFotos) {
+                foreach ($fotosGuardadas as $urlFoto) {
+                    $this->fotos->eliminar($urlFoto);
+                }
+            }
 
             return response()->json([
                 'success' => false,
@@ -484,11 +491,9 @@ class HotelController extends Controller
         try {
             DB::beginTransaction();
 
-            // Borrar fotos de Google Drive
+            // Borrar fotos del almacenamiento local
             foreach ($hotel->fotos as $foto) {
-                if ($foto->url_foto) {
-                    $this->driveService->deleteFromDrive($foto->url_foto);
-                }
+                $this->fotos->eliminar($foto->url_foto);
             }
 
             $idDireccion = $hotel->id_direccion;

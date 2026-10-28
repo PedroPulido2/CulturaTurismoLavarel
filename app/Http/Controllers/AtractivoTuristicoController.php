@@ -10,7 +10,7 @@ use App\Http\Resources\AtractivoPublicResource;
 use App\Models\AtractivoTuristico;
 use App\Models\DireccionGoogle;
 use App\Models\Foto;
-use App\Services\GoogleDriveService;
+use App\Services\FotoStorageService;
 use App\Services\PortadaService;
 use Exception;
 use Illuminate\Http\Request;
@@ -24,11 +24,11 @@ class AtractivoTuristicoController extends Controller
     use RechazaCambioDePk;
     use SyncRedesSociales;
 
-    protected $driveService;
+    protected $fotos;
 
-    public function __construct(GoogleDriveService $driveService)
+    public function __construct(FotoStorageService $fotos)
     {
-        $this->driveService = $driveService;
+        $this->fotos = $fotos;
     }
 
     public function getAllAtractivos(Request $request)
@@ -163,19 +163,15 @@ class AtractivoTuristicoController extends Controller
                 $request->input('redes_sociales')
             );
 
-            // Procesar y subir multiples fotos
+            // Procesar y guardar multiples fotos
             if ($request->hasFile('fotos')) {
-                $idCarpetaDestino = env('ID_CARPETA_FOTOS_ATRACTIVOS');
-                $archivos = $request->file('fotos');
+                $fotosGuardadas = [];
 
-                foreach ($archivos as $index => $archivo) {
-                    // nombre unico ID_ATRACTIVO_n.extension
-                    $nombreArchivo = $atractivo->id_atractivo_turistico.'_'.($index + 1).'.'.$archivo->getClientOriginalExtension();
-
-                    // sube al drive usando el service
-                    $rutaFoto = $this->driveService->uploadToDrive($archivo, $nombreArchivo, $idCarpetaDestino);
-
+                foreach ($request->file('fotos') as $index => $archivo) {
                     // Guarda el registro en la base de datos (la primera foto queda como portada)
+                    $rutaFoto = $this->fotos->guardar($archivo, 'atractivos', 'atractivo_'.$atractivo->id_atractivo_turistico);
+                    $fotosGuardadas[] = $rutaFoto;
+
                     Foto::create([
                         'url_foto' => $rutaFoto,
                         'is_portada' => $index === 0,
@@ -195,7 +191,13 @@ class AtractivoTuristicoController extends Controller
                 'data' => $atractivo,
             ], 201);
         } catch (Exception $e) {
+            $revertirFotos = DB::transactionLevel() > 0;
             DB::rollBack();
+            if ($revertirFotos) {
+                foreach (($fotosGuardadas ?? []) as $urlFoto) {
+                    $this->fotos->eliminar($urlFoto);
+                }
+            }
 
             return response()->json([
                 'success' => false,
@@ -292,30 +294,23 @@ class AtractivoTuristicoController extends Controller
                 );
             }
 
-            // Eliminar fotos específicas (de Drive y de la DB)
+            // Eliminar fotos específicas (del almacenamiento local y de la DB)
             if ($request->has('fotos_a_eliminar')) {
                 $fotosAEliminar = Foto::whereIn('id_foto', $request->fotos_a_eliminar)
                     ->where('id_atractivo_turistico', $id)
                     ->get();
 
                 foreach ($fotosAEliminar as $foto) {
-                    if ($foto->url_foto) {
-                        $this->driveService->deleteFromDrive($foto->url_foto);
-                    }
+                    $this->fotos->eliminar($foto->url_foto);
                     $foto->delete(); // La borramos de la base de datos
                 }
             }
 
             // Subir y guardar las nuevas fotos
             if ($request->hasFile('nuevas_fotos')) {
-                $idCarpetaDestino = env('ID_CARPETA_FOTOS_ATRACTIVOS');
-                $archivos = $request->file('nuevas_fotos');
-
-                foreach ($archivos as $index => $archivo) {
-                    // Se utiliza time() en el nombre para evitar sobreescribir archivos
-                    $nombreArchivo = $id.'_'.time().'_'.$index.'.'.$archivo->getClientOriginalExtension();
-
-                    $rutaFoto = $this->driveService->uploadToDrive($archivo, $nombreArchivo, $idCarpetaDestino);
+                foreach ($request->file('nuevas_fotos') as $archivo) {
+                    $rutaFoto = $this->fotos->guardar($archivo, 'atractivos', 'atractivo_'.$id);
+                    $nuevasGuardadas[] = $rutaFoto;
 
                     Foto::create([
                         'url_foto' => $rutaFoto,
@@ -345,7 +340,13 @@ class AtractivoTuristicoController extends Controller
                 'data' => $atractivo,
             ]);
         } catch (Exception $e) {
+            $revertirFotos = DB::transactionLevel() > 0;
             DB::rollBack();
+            if ($revertirFotos) {
+                foreach (($nuevasGuardadas ?? []) as $urlFoto) {
+                    $this->fotos->eliminar($urlFoto);
+                }
+            }
 
             return response()->json([
                 'success' => false,
@@ -403,9 +404,7 @@ class AtractivoTuristicoController extends Controller
             DB::beginTransaction();
 
             foreach ($atractivo->fotos as $foto) {
-                if ($foto->url_foto) {
-                    $this->driveService->deleteFromDrive($foto->url_foto);
-                }
+                $this->fotos->eliminar($foto->url_foto);
             }
             $atractivo->fotos()->delete();
             $idDireccion = $atractivo->id_direccion;

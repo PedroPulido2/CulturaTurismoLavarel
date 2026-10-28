@@ -10,7 +10,7 @@ use App\Http\Resources\AgenciaPublicResource;
 use App\Models\Agencia;
 use App\Models\Foto;
 use App\Models\TipoAgencia;
-use App\Services\GoogleDriveService;
+use App\Services\FotoStorageService;
 use App\Services\PortadaService;
 use Exception;
 use Illuminate\Http\Request;
@@ -24,11 +24,11 @@ class AgenciaController extends Controller
     use RechazaCambioDePk;
     use SyncRedesSociales;
 
-    protected $driveService;
+    protected $fotos;
 
-    public function __construct(GoogleDriveService $driveService)
+    public function __construct(FotoStorageService $fotos)
     {
-        $this->driveService = $driveService;
+        $this->fotos = $fotos;
     }
 
     public function getAllAgencias(Request $request)
@@ -166,12 +166,11 @@ class AgenciaController extends Controller
 
             // Procesar fotos si las hay
             if ($request->hasFile('fotos')) {
-                $idCarpetaDestino = env('ID_CARPETA_FOTOS_AGENCIAS');
-                $archivos = $request->file('fotos');
+                $fotosGuardadas = [];
 
-                foreach ($archivos as $index => $archivo) {
-                    $nombreArchivo = 'agencia_'.$agencia->id_agencia.'_'.time().'_'.$index.'.'.$archivo->getClientOriginalExtension();
-                    $rutaFoto = $this->driveService->uploadToDrive($archivo, $nombreArchivo, $idCarpetaDestino);
+                foreach ($request->file('fotos') as $index => $archivo) {
+                    $rutaFoto = $this->fotos->guardar($archivo, 'agencias', 'agencia_'.$agencia->id_agencia);
+                    $fotosGuardadas[] = $rutaFoto;
 
                     Foto::create([
                         'url_foto' => $rutaFoto,
@@ -190,7 +189,13 @@ class AgenciaController extends Controller
                 'data' => $agencia,
             ], 201);
         } catch (Exception $e) {
+            $revertirFotos = DB::transactionLevel() > 0;
             DB::rollBack();
+            if ($revertirFotos) {
+                foreach (($fotosGuardadas ?? []) as $urlFoto) {
+                    $this->fotos->eliminar($urlFoto);
+                }
+            }
 
             return response()->json([
                 'success' => false,
@@ -333,20 +338,15 @@ class AgenciaController extends Controller
                     ->get();
 
                 foreach ($fotosAEliminar as $foto) {
-                    if ($foto->url_foto) {
-                        $this->driveService->deleteFromDrive($foto->url_foto);
-                    }
+                    $this->fotos->eliminar($foto->url_foto);
                     $foto->delete();
                 }
             }
 
             if ($request->hasFile('nuevas_fotos')) {
-                $idCarpetaDestino = env('ID_CARPETA_FOTOS_AGENCIAS');
-                $archivos = $request->file('nuevas_fotos');
-
-                foreach ($archivos as $index => $archivo) {
-                    $nombreArchivo = 'agencia_'.$id.'_'.time().'_'.$index.'.'.$archivo->getClientOriginalExtension();
-                    $rutaFoto = $this->driveService->uploadToDrive($archivo, $nombreArchivo, $idCarpetaDestino);
+                foreach ($request->file('nuevas_fotos') as $archivo) {
+                    $rutaFoto = $this->fotos->guardar($archivo, 'agencias', 'agencia_'.$id);
+                    $nuevasGuardadas[] = $rutaFoto;
 
                     Foto::create([
                         'url_foto' => $rutaFoto,
@@ -374,7 +374,13 @@ class AgenciaController extends Controller
                 'data' => $agencia,
             ]);
         } catch (Exception $e) {
+            $revertirFotos = DB::transactionLevel() > 0;
             DB::rollBack();
+            if ($revertirFotos) {
+                foreach (($nuevasGuardadas ?? []) as $urlFoto) {
+                    $this->fotos->eliminar($urlFoto);
+                }
+            }
 
             return response()->json([
                 'success' => false,
@@ -395,9 +401,7 @@ class AgenciaController extends Controller
             DB::beginTransaction();
 
             foreach ($agencia->fotos as $foto) {
-                if ($foto->url_foto) {
-                    $this->driveService->deleteFromDrive($foto->url_foto);
-                }
+                $this->fotos->eliminar($foto->url_foto);
             }
 
             // Fotos, especialidades turísticas y redes sociales se eliminan en cascada

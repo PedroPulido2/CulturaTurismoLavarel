@@ -9,7 +9,7 @@ use App\Http\Resources\EventoPublicResource;
 use App\Models\DireccionGoogle;
 use App\Models\Evento;
 use App\Models\Foto;
-use App\Services\GoogleDriveService;
+use App\Services\FotoStorageService;
 use App\Services\PortadaService;
 use Exception;
 use Illuminate\Http\Request;
@@ -23,11 +23,11 @@ class EventoController extends Controller
     use AplicaFiltrosListado;
     use RechazaCambioDePk;
 
-    protected $driveService;
+    protected $fotos;
 
-    public function __construct(GoogleDriveService $driveService)
+    public function __construct(FotoStorageService $fotos)
     {
-        $this->driveService = $driveService;
+        $this->fotos = $fotos;
     }
 
     public function getAllEventos(Request $request)
@@ -199,8 +199,6 @@ class EventoController extends Controller
                 'longitud' => $request->longitud,
             ]);
 
-            $idCarpetaDestino = env('ID_CARPETA_FOTOS_EVENTOS');
-
             // Crear el evento con su PK alfanumérica (VARCHAR(15)) asignada por el cliente
             $datos = $request->only([
                 'id_evento',
@@ -232,11 +230,11 @@ class EventoController extends Controller
 
             // Subir la galería de fotos del evento
             if ($request->hasFile('fotos')) {
-                $archivos = $request->file('fotos');
+                $fotosGuardadas = [];
 
-                foreach ($archivos as $index => $archivo) {
-                    $nombreArchivo = 'evento_galeria_'.$evento->id_evento.'_'.time().'_'.$index.'.'.$archivo->getClientOriginalExtension();
-                    $rutaFoto = $this->driveService->uploadToDrive($archivo, $nombreArchivo, $idCarpetaDestino);
+                foreach ($request->file('fotos') as $index => $archivo) {
+                    $rutaFoto = $this->fotos->guardar($archivo, 'eventos', 'evento_galeria_'.$evento->id_evento);
+                    $fotosGuardadas[] = $rutaFoto;
 
                     Foto::create([
                         'url_foto' => $rutaFoto,
@@ -255,7 +253,13 @@ class EventoController extends Controller
                 'data' => $evento,
             ], 201);
         } catch (Exception $e) {
+            $revertirFotos = DB::transactionLevel() > 0;
             DB::rollBack();
+            if ($revertirFotos) {
+                foreach (($fotosGuardadas ?? []) as $urlFoto) {
+                    $this->fotos->eliminar($urlFoto);
+                }
+            }
 
             return response()->json([
                 'success' => false,
@@ -360,8 +364,6 @@ class EventoController extends Controller
 
             $evento->update($datos);
 
-            $idCarpetaDestino = env('ID_CARPETA_FOTOS_EVENTOS');
-
             // Eliminar fotos de la galería especificadas
             if ($request->has('fotos_a_eliminar')) {
                 $fotosAEliminar = Foto::whereIn('id_foto', $request->fotos_a_eliminar)
@@ -369,20 +371,16 @@ class EventoController extends Controller
                     ->get();
 
                 foreach ($fotosAEliminar as $foto) {
-                    if ($foto->url_foto) {
-                        $this->driveService->deleteFromDrive($foto->url_foto);
-                    }
+                    $this->fotos->eliminar($foto->url_foto);
                     $foto->delete();
                 }
             }
 
             // Agregar nuevas fotos a la galería
             if ($request->hasFile('nuevas_fotos')) {
-                $archivos = $request->file('nuevas_fotos');
-
-                foreach ($archivos as $index => $archivo) {
-                    $nombreArchivo = 'evento_galeria_'.$id.'_'.time().'_'.$index.'.'.$archivo->getClientOriginalExtension();
-                    $rutaFoto = $this->driveService->uploadToDrive($archivo, $nombreArchivo, $idCarpetaDestino);
+                foreach ($request->file('nuevas_fotos') as $archivo) {
+                    $rutaFoto = $this->fotos->guardar($archivo, 'eventos', 'evento_galeria_'.$id);
+                    $nuevasGuardadas[] = $rutaFoto;
 
                     Foto::create([
                         'url_foto' => $rutaFoto,
@@ -410,7 +408,13 @@ class EventoController extends Controller
                 'data' => $evento,
             ]);
         } catch (Exception $e) {
+            $revertirFotos = DB::transactionLevel() > 0;
             DB::rollBack();
+            if ($revertirFotos) {
+                foreach (($nuevasGuardadas ?? []) as $urlFoto) {
+                    $this->fotos->eliminar($urlFoto);
+                }
+            }
 
             return response()->json([
                 'success' => false,
@@ -503,11 +507,9 @@ class EventoController extends Controller
         try {
             DB::beginTransaction();
 
-            // Eliminar todas las fotos de la galería de Drive
+            // Eliminar todas las fotos de la galería del almacenamiento local
             foreach ($evento->fotos as $foto) {
-                if ($foto->url_foto) {
-                    $this->driveService->deleteFromDrive($foto->url_foto);
-                }
+                $this->fotos->eliminar($foto->url_foto);
             }
 
             $idDireccion = $evento->id_direccion;
