@@ -44,6 +44,7 @@ class AuditLogMiddleware
         'tipos-servicio' => ['Servicios Culturales', 'TIPO_SERVICIO', 'el tipo de servicio'],
         'publico-dirigido' => ['Servicios Culturales', 'PUBLICO_DIRIGIDO', 'el público dirigido'],
         'event' => ['Eventos', 'EVENTO', 'el evento'],
+        'archivos' => ['Gestor Archivos', 'ARCHIVO', 'el archivo'],
         'profiles' => ['Perfiles', 'PERFIL', 'el perfil'],
     ];
 
@@ -362,7 +363,7 @@ class AuditLogMiddleware
     {
         $total = 0;
 
-        foreach (['fotos', 'url_foto'] as $clave) {
+        foreach (['fotos', 'url_foto', 'archivo'] as $clave) {
             if (! $request->hasFile($clave)) {
                 continue;
             }

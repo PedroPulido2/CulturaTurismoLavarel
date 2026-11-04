@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AgenciaController;
+use App\Http\Controllers\ArchivoController;
 use App\Http\Controllers\AtractivoTuristicoController;
 use App\Http\Controllers\EventoController;
 use App\Http\Controllers\GuiaController;
@@ -136,6 +137,16 @@ Route::delete('/tipos-publico/{id}', [GuiaController::class, 'deleteTipoPublico'
 // ==========================================
 Route::get('/prestadores-turisticos', [PrestadoresPublicoController::class, 'getPrestadoresPublicos']);
 Route::get('/redes-sociales', [PrestadoresPublicoController::class, 'getRedesSociales']);
+
+// ==========================================
+// GESTOR DE ARCHIVOS (carpeta única global en storage/app/private/archivos)
+// Solo usuarios logueados (auth.jwt): el front sube con multipart/form-data
+// y descarga por estas rutas, sin URLs públicas.
+// ==========================================
+Route::get('/archivos', [ArchivoController::class, 'index'])->middleware('auth.jwt');
+Route::post('/archivos', [ArchivoController::class, 'store'])->middleware('auth.jwt');
+Route::get('/archivos/{nombre}/descargar', [ArchivoController::class, 'descargar'])->middleware('auth.jwt')->where('nombre', '[^/]+');
+Route::delete('/archivos/{nombre}', [ArchivoController::class, 'destroy'])->middleware('auth.jwt')->where('nombre', '[^/]+');
 
 // ==========================================
 // RUTAS DE Servicios Culturales / cultural-services (módulo 3)
