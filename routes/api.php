@@ -5,6 +5,7 @@ use App\Http\Controllers\AtractivoTuristicoController;
 use App\Http\Controllers\EventoController;
 use App\Http\Controllers\GuiaController;
 use App\Http\Controllers\HotelController;
+use App\Http\Controllers\LogController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\PrestadoresPublicoController;
@@ -171,6 +172,13 @@ Route::get('/admin/agency', [AgenciaController::class, 'getAllAgenciasAdmin'])->
 Route::get('/admin/guide', [GuiaController::class, 'getAllGuiasAdmin'])->middleware('modulo:Prestadores Servicios');
 Route::get('/admin/event', [EventoController::class, 'getAllEventosAdmin'])->middleware('modulo:Eventos');
 Route::get('/admin/cultural-services', [ServicioCulturalController::class, 'getAllServiciosAdmin'])->middleware('modulo:Servicios Culturales');
+
+// ==========================================
+// AUDITORÍA (solo Super Administrador)
+// Tabla: GET /api/logs — Descarga CSV: GET /api/logs/descargar
+// ==========================================
+Route::get('/logs', [LogController::class, 'index'])->middleware('superadmin');
+Route::get('/logs/descargar', [LogController::class, 'descargar'])->middleware('superadmin');
 
 // ==========================================
 // RUTAS DE DIAGNÓSTICO (Opcionales, para pruebas)

@@ -4,13 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Login;
 use App\Models\Usuario;
+use App\Services\AuditLogService;
 use App\Services\JwtService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
 class LoginController extends Controller
 {
-    public function __construct(private JwtService $jwt) {}
+    public function __construct(private JwtService $jwt, private AuditLogService $audit) {}
 
     public function login(Request $request)
     {
@@ -62,6 +63,8 @@ class LoginController extends Controller
         // GET /api/profiles/{id} para los datos del usuario.
         $jwt = $this->jwt->issueToken($usuario_data->id_usuario);
 
+        $this->audit->registrar('Auth', 'LOGIN_EXITOSO', 'OK', trim("{$usuario_data->nombre} {$usuario_data->apellido}").' inició sesión en el sistema.', $usuario_data->num_documento, $request);
+
         return response()->json([
             'success' => true,
             'message' => 'Autenticación exitosa',
@@ -80,6 +83,13 @@ class LoginController extends Controller
         $usuario->estado = 'ACTIVO';
         $usuario->intentos_fallidos = 0;
         $usuario->save();
+
+        $otorgante = Usuario::where('id_usuario', $request->attributes->get('auth_user_id'))->first(['nombre', 'apellido']);
+        $objetivo = Usuario::where('id_usuario', $id_usuario)->first(['nombre', 'apellido']);
+        $nombreOtorgante = $otorgante ? trim("{$otorgante->nombre} {$otorgante->apellido}") : 'Un usuario';
+        $nombreObjetivo = $objetivo ? trim("{$objetivo->nombre} {$objetivo->apellido}") : "el usuario con id {$id_usuario}";
+
+        $this->audit->registrarPara($request->attributes->get('auth_user_id'), 'Perfiles', 'DESBLOQUEO_CUENTA', 'OK', "{$nombreOtorgante} desbloqueó la cuenta de {$nombreObjetivo}.", $request);
 
         return response()->json(['success' => true, 'message' => 'Usuario desbloqueado exitosamente'], 200);
     }
