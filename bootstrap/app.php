@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\ReescribirUrlFotos;
 use App\Http\Middleware\AuditLogMiddleware;
 use App\Http\Middleware\AuthenticateJwt;
 use App\Http\Middleware\CheckModuloAccess;
@@ -30,4 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
-    })->create();
+    })
+    ->withCommands([
+        ReescribirUrlFotos::class,
+    ])->create();

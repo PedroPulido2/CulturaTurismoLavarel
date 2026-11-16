@@ -29,3 +29,4 @@ Thumbs.db
 AGENTS.md
 /postman
 /docs
+.env.prod

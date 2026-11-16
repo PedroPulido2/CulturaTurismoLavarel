@@ -10,6 +10,7 @@ use App\Http\Controllers\LogController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\PrestadoresPublicoController;
+use App\Http\Controllers\RespaldoController;
 use App\Http\Controllers\RestauranteController;
 use App\Http\Controllers\ServicioCulturalController;
 use App\Http\Controllers\UserController;
@@ -190,6 +191,14 @@ Route::get('/admin/cultural-services', [ServicioCulturalController::class, 'getA
 // ==========================================
 Route::get('/logs', [LogController::class, 'index'])->middleware('superadmin');
 Route::get('/logs/descargar', [LogController::class, 'descargar'])->middleware('superadmin');
+
+// ==========================================
+// RESPALDO DE FOTOS LOCALES (solo Super Administrador)
+// Inventario + descarga ZIP de storage/app/public/fotos/ con la
+// estructura fotos/{carpeta}/... para copiar al deploy final.
+// ==========================================
+Route::get('/admin/respaldo/fotos/inventario', [RespaldoController::class, 'inventario'])->middleware('superadmin');
+Route::get('/admin/respaldo/fotos', [RespaldoController::class, 'descargar'])->middleware('superadmin');
 
 // ==========================================
 // RUTAS DE DIAGNÓSTICO (Opcionales, para pruebas)
