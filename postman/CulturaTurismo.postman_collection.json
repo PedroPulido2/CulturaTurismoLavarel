@@ -1,0 +1,3642 @@
+{
+  "info": {
+    "name": "CulturaTurismo API",
+    "_postman_id": "0ca1759f-f51d-4b08-bb6d-2dd55774c9f0",
+    "description": "Colección CRUD de la API CulturaTurismo (esquema culturayturismo).\nOrden sugerido: 1 Auth → 2 Perfiles → 3 Permisos → 4 Catálogos → 5-11 entidades → 14 Admin.\nVitrinas públicas (5-12): solo visibles, campos mínimos, paginadas. Listas admin (14): visibles + ocultos con is_visible, exigen Bearer + permiso del módulo.\nLos campos de archivo (fotos/url_foto/nuevas_fotos) vienen deshabilitados: habilítalos y adjunta una imagen para probar subidas a Drive.\nOtorgar/quitar módulos exige Bearer de un Super Administrador.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000/api"
+    },
+    {
+      "key": "jwt",
+      "value": ""
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{jwt}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "1. Auth",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"admin@sogamoso.gov.co\",\n  \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Guarda el JWT en la variable de colección {{jwt}}."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.token) pm.collectionVariables.set('jwt', json.token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Desbloquear usuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/login/unlock/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "login",
+                "unlock",
+                "1"
+              ]
+            },
+            "description": "Pasa el id_usuario. Solo si la cuenta está BLOQUEADA."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Perfiles (usuario + login)",
+      "item": [
+        {
+          "name": "Listar perfiles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/profiles",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "profiles"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener por email",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/profiles/e/admin@sogamoso.gov.co",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "profiles",
+                "e",
+                "admin@sogamoso.gov.co"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener por ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/profiles/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "profiles",
+                "1"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Crear perfil",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/profiles/registro",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "profiles",
+                "registro"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "tipo_identificacion",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "CC"
+                },
+                {
+                  "key": "num_documento",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "123456789"
+                },
+                {
+                  "key": "nombre",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "María"
+                },
+                {
+                  "key": "apellido",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Pérez"
+                },
+                {
+                  "key": "correo",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "admin@sogamoso.gov.co"
+                },
+                {
+                  "key": "fecha_nacimiento",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "1990-05-14"
+                },
+                {
+                  "key": "genero",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Femenino"
+                },
+                {
+                  "key": "telefono",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "3101234567"
+                },
+                {
+                  "key": "id_rol",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "2"
+                },
+                {
+                  "key": "url_foto",
+                  "type": "file",
+                  "disabled": true,
+                  "src": []
+                }
+              ]
+            },
+            "description": "Cada usuario tiene UN solo rol (usuario.id_rol). Sin id_rol se asigna Administrador (2). Para el PRIMER superadmin usa id_rol=1. Foto opcional (habilítala y adjunta archivo)."
+          },
+          "response": []
+        },
+        {
+          "name": "Actualizar perfil",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/profiles/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "profiles",
+                "1"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "_method",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "PUT"
+                },
+                {
+                  "key": "nombre",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "María Fernanda"
+                },
+                {
+                  "key": "telefono",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "3107654321"
+                },
+                {
+                  "key": "id_rol",
+                  "type": "text",
+                  "disabled": true,
+                  "value": "1"
+                },
+                {
+                  "key": "password",
+                  "type": "text",
+                  "disabled": true,
+                  "value": "nuevoPassword123"
+                },
+                {
+                  "key": "url_foto",
+                  "type": "file",
+                  "disabled": true,
+                  "src": []
+                }
+              ]
+            },
+            "description": "Multipart + _method=PUT (Laravel no procesa archivos en PUT directo). id_rol cambia el rol único."
+          },
+          "response": []
+        },
+        {
+          "name": "Eliminar perfil",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/profiles/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "profiles",
+                "1"
+              ]
+            },
+            "description": "Borra foto de Drive; login y módulos se eliminan en cascada."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Roles y permisos (superadmin)",
+      "item": [
+        {
+          "name": "Listar roles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/roles",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "roles"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Listar módulos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/modulos",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "modulos"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Ver módulos de un usuario",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/profiles/2/modulos",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "profiles",
+                "2",
+                "modulos"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Otorgar módulos",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/profiles/2/modulos",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "profiles",
+                "2",
+                "modulos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"modulo_ids\": [\n    1,\n    4\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Requiere Bearer de un SUPERADMIN ({{jwt}} del login). Módulos: 1 Atractivos Turísticos, 2 Prestadores Servicios, 3 Servicios Culturales, 4 Eventos, 5 Usuarios y Roles. asignado_por se toma del token, no del body. Agrega sin duplicar."
+          },
+          "response": []
+        },
+        {
+          "name": "Quitar módulo",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/profiles/2/modulos/4",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "profiles",
+                "2",
+                "modulos",
+                "4"
+              ]
+            },
+            "description": "Requiere Bearer de un SUPERADMIN. 404 si el usuario no tiene ese módulo."
+          },
+          "response": []
+        }
+      ],
+      "description": "Crear usuarios da rol Administrador sin módulos. Solo el Super Administrador otorga/retira módulos."
+    },
+    {
+      "name": "4. Catálogos",
+      "item": [
+        {
+          "name": "Catálogo: Tipos de cocina",
+          "item": [
+            {
+              "name": "Listar",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/tipos-cocina",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "tipos-cocina"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Crear",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/tipos-cocina",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "tipos-cocina"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Típica boyacense\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Eliminar",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/tipos-cocina/1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "tipos-cocina",
+                    "1"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Catálogo: Tipos de agencia",
+          "item": [
+            {
+              "name": "Listar",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/tipos-agencia",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "tipos-agencia"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Crear",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/tipos-agencia",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "tipos-agencia"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Operadora\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Eliminar",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/tipos-agencia/1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "tipos-agencia",
+                    "1"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Catálogo: Especialidades de guía",
+          "item": [
+            {
+              "name": "Listar",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/especialidades",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "especialidades"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Crear",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/especialidades",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "especialidades"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Avistamiento de aves\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Eliminar",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/especialidades/1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "especialidades",
+                    "1"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Catálogo: Disponibilidades de guía",
+          "item": [
+            {
+              "name": "Listar",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/disponibilidades",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "disponibilidades"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Crear",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/disponibilidades",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "disponibilidades"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Fines de semana\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Eliminar",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/disponibilidades/1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "disponibilidades",
+                    "1"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Catálogo: Tipos de público (guía)",
+          "item": [
+            {
+              "name": "Listar",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/tipos-publico",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "tipos-publico"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Crear",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/tipos-publico",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "tipos-publico"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Familiar\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Eliminar",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/tipos-publico/1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "tipos-publico",
+                    "1"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Catálogo: Áreas artísticas",
+          "item": [
+            {
+              "name": "Listar",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/areas-artisticas",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "areas-artisticas"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Crear",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/areas-artisticas",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "areas-artisticas"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Música\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Eliminar",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/areas-artisticas/1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "areas-artisticas",
+                    "1"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Catálogo: Tipos de servicio cultural",
+          "item": [
+            {
+              "name": "Listar",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/tipos-servicio",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "tipos-servicio"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Crear",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/tipos-servicio",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "tipos-servicio"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Taller\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Eliminar",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/tipos-servicio/1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "tipos-servicio",
+                    "1"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Catálogo: Público dirigido",
+          "item": [
+            {
+              "name": "Listar",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/publico-dirigido",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "publico-dirigido"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Crear",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/publico-dirigido",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "publico-dirigido"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Juvenil\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Eliminar",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/publico-dirigido/1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "publico-dirigido",
+                    "1"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Listar redes sociales",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/redes-sociales",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "redes-sociales"
+              ]
+            },
+            "description": "IDs necesarios para el campo redes_sociales de hotel/restaurante/agencia/atractivo."
+          },
+          "response": []
+        }
+      ],
+      "description": "Crear primero los catálogos: las entidades exigen sus IDs por FK."
+    },
+    {
+      "name": "5. Atractivos turísticos",
+      "item": [
+        {
+          "name": "Listar",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tourism",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tourism"
+              ]
+            },
+            "description": "Vitrina pública: solo visibles, campos mínimos, paginada (?page&per_page, máx 50). El detalle por ID trae el modelo completo."
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener por ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tourism/ATR-001",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tourism",
+                "ATR-001"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Crear",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tourism/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tourism",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "id_atractivo_turistico",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "ATR-001"
+                },
+                {
+                  "key": "nombre",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Plaza de la Villa"
+                },
+                {
+                  "key": "tipo",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Patrimonial"
+                },
+                {
+                  "key": "descripcion",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Plaza principal de Sogamoso"
+                },
+                {
+                  "key": "telefono",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "3101234567"
+                },
+                {
+                  "key": "horario",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Lun-Dom 8am-6pm"
+                },
+                {
+                  "key": "precio",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Entrada libre"
+                },
+                {
+                  "key": "is_visible",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "true"
+                },
+                {
+                  "key": "direccion",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Plaza de la Villa, Sogamoso, Boyacá"
+                },
+                {
+                  "key": "latitud",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "5.7189"
+                },
+                {
+                  "key": "longitud",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "-72.9289"
+                },
+                {
+                  "key": "redes_sociales[0][id_redes_sociales]",
+                  "type": "text",
+                  "disabled": true,
+                  "value": "1"
+                },
+                {
+                  "key": "redes_sociales[0][url]",
+                  "type": "text",
+                  "disabled": true,
+                  "value": "https://facebook.com/plaza"
+                },
+                {
+                  "key": "fotos",
+                  "type": "file",
+                  "disabled": true,
+                  "src": []
+                }
+              ]
+            },
+            "description": "id_atractivo_turistico: código manual VARCHAR(15), único y obligatorio. Habilita redes/fotos según necesites."
+          },
+          "response": []
+        },
+        {
+          "name": "Actualizar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tourism/ATR-001",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tourism",
+                "ATR-001"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "_method",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "PUT"
+                },
+                {
+                  "key": "nombre",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Plaza de la Villa - Sogamoso"
+                },
+                {
+                  "key": "precio",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Gratuito"
+                },
+                {
+                  "key": "is_visible",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "true"
+                },
+                {
+                  "key": "fotos_a_eliminar[0]",
+                  "type": "text",
+                  "disabled": true,
+                  "value": "1"
+                },
+                {
+                  "key": "nuevas_fotos",
+                  "type": "file",
+                  "disabled": true,
+                  "src": []
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cambiar visibilidad",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tourism/ATR-001/visibility",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tourism",
+                "ATR-001",
+                "visibility"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"is_visible\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Acepta true/false. Columna real: is_visible."
+          },
+          "response": []
+        },
+        {
+          "name": "Eliminar",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tourism/ATR-001",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tourism",
+                "ATR-001"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6. Hoteles",
+      "item": [
+        {
+          "name": "Listar",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/hotel",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "hotel"
+              ]
+            },
+            "description": "Vitrina pública: solo visibles, campos mínimos, paginada (?page&per_page, máx 50). El detalle por ID trae el modelo completo."
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener por ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/hotel/HOT-001",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "hotel",
+                "HOT-001"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Crear",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/hotel/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "hotel",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "id_hotel",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "HOT-001"
+                },
+                {
+                  "key": "nombre",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Hotel Sogamoso Real"
+                },
+                {
+                  "key": "rnt",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "12345"
+                },
+                {
+                  "key": "celular",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "3101234567"
+                },
+                {
+                  "key": "correo",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "hotel@ejemplo.com"
+                },
+                {
+                  "key": "nombre_contacto",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Juan Pérez"
+                },
+                {
+                  "key": "n_habitaciones_totales",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "20"
+                },
+                {
+                  "key": "n_habitaciones_simples",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "10"
+                },
+                {
+                  "key": "n_habitaciones_dobles",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "8"
+                },
+                {
+                  "key": "n_habitaciones_suites",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "2"
+                },
+                {
+                  "key": "petfriendly",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "true"
+                },
+                {
+                  "key": "acceso_discapacidad",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "false"
+                },
+                {
+                  "key": "parqueadero",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "true"
+                },
+                {
+                  "key": "restaurante",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "true"
+                },
+                {
+                  "key": "calificacion_salud",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "4.5"
+                },
+                {
+                  "key": "visita_inspeccion_turismo",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "false"
+                },
+                {
+                  "key": "observacion",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Hotel céntrico (observacion en singular)"
+                },
+                {
+                  "key": "is_visible",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "true"
+                },
+                {
+                  "key": "direccion",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Calle 11 #11-28, Sogamoso"
+                },
+                {
+                  "key": "latitud",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "5.7189"
+                },
+                {
+                  "key": "longitud",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "-72.9289"
+                },
+                {
+                  "key": "redes_sociales[0][id_redes_sociales]",
+                  "type": "text",
+                  "disabled": true,
+                  "value": "1"
+                },
+                {
+                  "key": "redes_sociales[0][url]",
+                  "type": "text",
+                  "disabled": true,
+                  "value": "https://instagram.com/hotel"
+                },
+                {
+                  "key": "fotos",
+                  "type": "file",
+                  "disabled": true,
+                  "src": []
+                }
+              ]
+            },
+            "description": "correo único. calificacion_salud es numérico (no booleano)."
+          },
+          "response": []
+        },
+        {
+          "name": "Actualizar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/hotel/HOT-001",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "hotel",
+                "HOT-001"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "_method",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "PUT"
+                },
+                {
+                  "key": "n_habitaciones_totales",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "25"
+                },
+                {
+                  "key": "petfriendly",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "false"
+                },
+                {
+                  "key": "observacion",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Ampliación 2026"
+                },
+                {
+                  "key": "fotos_a_eliminar[0]",
+                  "type": "text",
+                  "disabled": true,
+                  "value": "1"
+                },
+                {
+                  "key": "nuevas_fotos",
+                  "type": "file",
+                  "disabled": true,
+                  "src": []
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cambiar visibilidad",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/hotel/HOT-001/visibility",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "hotel",
+                "HOT-001",
+                "visibility"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"is_visible\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Acepta true/false. Columna real: is_visible."
+          },
+          "response": []
+        },
+        {
+          "name": "Eliminar",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/hotel/HOT-001",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "hotel",
+                "HOT-001"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "7. Restaurantes",
+      "item": [
+        {
+          "name": "Listar",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/restaurant",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "restaurant"
+              ]
+            },
+            "description": "Vitrina pública: solo visibles, campos mínimos, paginada (?page&per_page, máx 50). El detalle por ID trae el modelo completo."
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener por ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/restaurant/RES-001",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "restaurant",
+                "RES-001"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Crear",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/restaurant/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "restaurant",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "id_restaurante",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "RES-001"
+                },
+                {
+                  "key": "nombre",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Restaurante El Fogón"
+                },
+                {
+                  "key": "celular",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "3101234567"
+                },
+                {
+                  "key": "correo",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "fogon@ejemplo.com"
+                },
+                {
+                  "key": "horarios",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Lun-Sáb 11am-9pm"
+                },
+                {
+                  "key": "propietario",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Ana Gómez"
+                },
+                {
+                  "key": "capacidad",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "80 personas"
+                },
+                {
+                  "key": "platos_principales",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Cocido boyacense, cuchuco"
+                },
+                {
+                  "key": "is_visible",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "true"
+                },
+                {
+                  "key": "id_tipo_cocina",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "1"
+                },
+                {
+                  "key": "direccion",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Carrera 11 #12-30, Sogamoso"
+                },
+                {
+                  "key": "latitud",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "5.7189"
+                },
+                {
+                  "key": "longitud",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "-72.9289"
+                },
+                {
+                  "key": "redes_sociales[0][id_redes_sociales]",
+                  "type": "text",
+                  "disabled": true,
+                  "value": "1"
+                },
+                {
+                  "key": "redes_sociales[0][url]",
+                  "type": "text",
+                  "disabled": true,
+                  "value": "https://facebook.com/fogon"
+                },
+                {
+                  "key": "fotos",
+                  "type": "file",
+                  "disabled": true,
+                  "src": []
+                }
+              ]
+            },
+            "description": "id_tipo_cocina debe existir (ver catálogo tipos-cocina)."
+          },
+          "response": []
+        },
+        {
+          "name": "Actualizar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/restaurant/RES-001",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "restaurant",
+                "RES-001"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "_method",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "PUT"
+                },
+                {
+                  "key": "capacidad",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "100 personas"
+                },
+                {
+                  "key": "id_tipo_cocina",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "1"
+                },
+                {
+                  "key": "fotos_a_eliminar[0]",
+                  "type": "text",
+                  "disabled": true,
+                  "value": "1"
+                },
+                {
+                  "key": "nuevas_fotos",
+                  "type": "file",
+                  "disabled": true,
+                  "src": []
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cambiar visibilidad",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/restaurant/RES-001/visibility",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "restaurant",
+                "RES-001",
+                "visibility"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"is_visible\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Acepta true/false. Columna real: is_visible."
+          },
+          "response": []
+        },
+        {
+          "name": "Eliminar",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/restaurant/RES-001",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "restaurant",
+                "RES-001"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "8. Agencias",
+      "item": [
+        {
+          "name": "Listar",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/agency",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "agency"
+              ]
+            },
+            "description": "Vitrina pública: solo visibles, campos mínimos, paginada (?page&per_page, máx 50). El detalle por ID trae el modelo completo."
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener por ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/agency/AGE-001",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "agency",
+                "AGE-001"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Crear",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/agency/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "agency",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "id_agencia",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "AGE-001"
+                },
+                {
+                  "key": "nit",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "900123456-1"
+                },
+                {
+                  "key": "rnt",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "54321"
+                },
+                {
+                  "key": "nombre",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Agencia Sugamuxi Tours"
+                },
+                {
+                  "key": "celular",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "3101234567"
+                },
+                {
+                  "key": "correo",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "tours@ejemplo.com"
+                },
+                {
+                  "key": "representante_legal",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Carlos Ruiz"
+                },
+                {
+                  "key": "n_empleados_asociados",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "5"
+                },
+                {
+                  "key": "destinos_principales",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Laguna de Tota, Monguí"
+                },
+                {
+                  "key": "observaciones",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Operadora local"
+                },
+                {
+                  "key": "is_visible",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "true"
+                },
+                {
+                  "key": "id_tipo_agencia",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "1"
+                },
+                {
+                  "key": "especialidades[0]",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Ecoturismo"
+                },
+                {
+                  "key": "especialidades[1]",
+                  "type": "text",
+                  "disabled": true,
+                  "value": "Turismo cultural"
+                },
+                {
+                  "key": "redes_sociales[0][id_redes_sociales]",
+                  "type": "text",
+                  "disabled": true,
+                  "value": "1"
+                },
+                {
+                  "key": "redes_sociales[0][url]",
+                  "type": "text",
+                  "disabled": true,
+                  "value": "https://instagram.com/sugamuxi"
+                },
+                {
+                  "key": "fotos",
+                  "type": "file",
+                  "disabled": true,
+                  "src": []
+                }
+              ]
+            },
+            "description": "id_tipo_agencia obligatorio (catálogo tipos-agencia). Sin dirección: la agencia no lleva id_direccion."
+          },
+          "response": []
+        },
+        {
+          "name": "Actualizar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/agency/AGE-001",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "agency",
+                "AGE-001"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "_method",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "PUT"
+                },
+                {
+                  "key": "n_empleados_asociados",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "8"
+                },
+                {
+                  "key": "especialidades[0]",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Ecoturismo"
+                },
+                {
+                  "key": "especialidades[1]",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Aventura"
+                },
+                {
+                  "key": "fotos_a_eliminar[0]",
+                  "type": "text",
+                  "disabled": true,
+                  "value": "1"
+                },
+                {
+                  "key": "nuevas_fotos",
+                  "type": "file",
+                  "disabled": true,
+                  "src": []
+                }
+              ]
+            },
+            "description": "Enviar especialidades reemplaza todas las anteriores."
+          },
+          "response": []
+        },
+        {
+          "name": "Cambiar visibilidad",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/agency/AGE-001/visibility",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "agency",
+                "AGE-001",
+                "visibility"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"is_visible\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Acepta true/false. Columna real: is_visible."
+          },
+          "response": []
+        },
+        {
+          "name": "Eliminar",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/agency/AGE-001",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "agency",
+                "AGE-001"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "9. Guías",
+      "item": [
+        {
+          "name": "Listar",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/guide",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "guide"
+              ]
+            },
+            "description": "Vitrina pública: solo visibles, campos mínimos, paginada (?page&per_page, máx 50). El detalle por ID trae el modelo completo."
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener por ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/guide/GUI-001",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "guide",
+                "GUI-001"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Crear",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/guide/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "guide",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_guia\": \"GUI-001\",\n  \"nombre\": \"Pedro Guianza\",\n  \"n_cedula\": 1054123456,\n  \"rnt\": \"98765\",\n  \"celular\": 3101234567,\n  \"correo\": \"guia@ejemplo.com\",\n  \"num_tarjeta_profesional\": 44556,\n  \"rango_anios_experiencia\": \"5-10 años\",\n  \"idiomas\": \"Español, Inglés\",\n  \"principales_atractivos\": \"Plaza de la Villa, Museo\",\n  \"asociacion\": \"Asoguías\",\n  \"is_visible\": true,\n  \"id_especialidad\": 1,\n  \"id_disponibilidad\": 1,\n  \"descripcion\": \"Guía local con 8 años de experiencia\",\n  \"id_tipo_publico\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Las FK id_especialidad/id_disponibilidad/id_tipo_publico son obligatorias. n_cedula/correo/tarjeta únicos."
+          },
+          "response": []
+        },
+        {
+          "name": "Actualizar",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/guide/GUI-001",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "guide",
+                "GUI-001"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idiomas\": \"Español, Inglés, Francés\",\n  \"rango_anios_experiencia\": \"10-15 años\",\n  \"is_visible\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cambiar visibilidad",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/guide/GUI-001/visibility",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "guide",
+                "GUI-001",
+                "visibility"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"is_visible\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Acepta true/false. Columna real: is_visible."
+          },
+          "response": []
+        },
+        {
+          "name": "Eliminar",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/guide/GUI-001",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "guide",
+                "GUI-001"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "10. Eventos",
+      "item": [
+        {
+          "name": "Listar",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/event",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "event"
+              ]
+            },
+            "description": "Vitrina pública: solo visibles, campos mínimos, paginada (?page&per_page, máx 50). id_evento es VARCHAR(15) manual, ya no existe codigo."
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener por ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/event/EVT001",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "event",
+                "EVT001"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Crear",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/event/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "event",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "id_evento",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "EVT001"
+                },
+                {
+                  "key": "nombre",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Festival del Sol"
+                },
+                {
+                  "key": "descripcion",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Fiesta tradicional sogamoseña"
+                },
+                {
+                  "key": "tipo",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Cultural"
+                },
+                {
+                  "key": "organizador",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Alcaldía"
+                },
+                {
+                  "key": "contacto",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "3101234567"
+                },
+                {
+                  "key": "fecha_inicio",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "2026-12-15"
+                },
+                {
+                  "key": "fecha_fin",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "2026-12-18"
+                },
+                {
+                  "key": "asistentes_estimados",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "5000"
+                },
+                {
+                  "key": "asistentes_reales",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "4800"
+                },
+                {
+                  "key": "impacto_economico",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "150.75"
+                },
+                {
+                  "key": "observaciones",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Edición 2026"
+                },
+                {
+                  "key": "is_visible",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "true"
+                },
+                {
+                  "key": "direccion",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Plaza de la Villa, Sogamoso"
+                },
+                {
+                  "key": "latitud",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "5.7189"
+                },
+                {
+                  "key": "longitud",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "-72.9289"
+                },
+                {
+                  "key": "fotos",
+                  "type": "file",
+                  "disabled": true,
+                  "src": []
+                }
+              ]
+            },
+            "description": "id_evento: código manual VARCHAR(15), único y obligatorio (reemplaza al antiguo codigo). Sin flyer: solo galería en tabla fotos."
+          },
+          "response": []
+        },
+        {
+          "name": "Actualizar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/event/EVT001",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "event",
+                "EVT001"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "_method",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "PUT"
+                },
+                {
+                  "key": "asistentes_reales",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "5200"
+                },
+                {
+                  "key": "is_visible",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "true"
+                },
+                {
+                  "key": "fotos_a_eliminar[0]",
+                  "type": "text",
+                  "disabled": true,
+                  "value": "1"
+                },
+                {
+                  "key": "nuevas_fotos",
+                  "type": "file",
+                  "disabled": true,
+                  "src": []
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cambiar visibilidad",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/event/EVT001/visibility",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "event",
+                "EVT001",
+                "visibility"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"is_visible\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Acepta true/false. Columna real: is_visible."
+          },
+          "response": []
+        },
+        {
+          "name": "Eliminar",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/event/EVT001",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "event",
+                "EVT001"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "11. Servicios culturales",
+      "item": [
+        {
+          "name": "Listar",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/cultural-services",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cultural-services"
+              ]
+            },
+            "description": "Vitrina pública: solo visibles, campos mínimos, paginada (?page&per_page, máx 50). No expone nit/telefono/correo/reconocimientos."
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener por ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/cultural-services/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cultural-services",
+                "1"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Crear",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/cultural-services/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cultural-services",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "id_servicio_cultural",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "1"
+                },
+                {
+                  "key": "id_tipo_servicio",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "1"
+                },
+                {
+                  "key": "id_publico_dirigido",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "1"
+                },
+                {
+                  "key": "id_area_artistica",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "1"
+                },
+                {
+                  "key": "nombre",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Carranga Los Andes"
+                },
+                {
+                  "key": "telefono",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "3101234567"
+                },
+                {
+                  "key": "correo",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "grupo@ejemplo.com"
+                },
+                {
+                  "key": "contacto",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Jorge Eliecer"
+                },
+                {
+                  "key": "biografia",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Agrupación con 10 años de trayectoria"
+                },
+                {
+                  "key": "reconocimientos",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Premio municipal 2024"
+                },
+                {
+                  "key": "is_visible",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "true"
+                },
+                {
+                  "key": "fotos",
+                  "type": "file",
+                  "disabled": true,
+                  "src": []
+                }
+              ]
+            },
+            "description": "id_servicio_cultural manual (entero, NO autoincremental). id_publico_dirigido opcional."
+          },
+          "response": []
+        },
+        {
+          "name": "Actualizar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/cultural-services/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cultural-services",
+                "1"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "_method",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "PUT"
+                },
+                {
+                  "key": "biografia",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "Agrupación con 12 años de trayectoria"
+                },
+                {
+                  "key": "is_visible",
+                  "type": "text",
+                  "disabled": false,
+                  "value": "true"
+                },
+                {
+                  "key": "fotos_a_eliminar[0]",
+                  "type": "text",
+                  "disabled": true,
+                  "value": "1"
+                },
+                {
+                  "key": "nuevas_fotos",
+                  "type": "file",
+                  "disabled": true,
+                  "src": []
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cambiar visibilidad",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/cultural-services/1/visibility",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cultural-services",
+                "1",
+                "visibility"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"is_visible\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Acepta true/false. Columna real: is_visible."
+          },
+          "response": []
+        },
+        {
+          "name": "Eliminar",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/cultural-services/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cultural-services",
+                "1"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "12. Prestadores públicos",
+      "item": [
+        {
+          "name": "Listar todos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/prestadores-turisticos",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "prestadores-turisticos"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Filtrar hoteles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/prestadores-turisticos?categoria=hoteles",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "prestadores-turisticos?categoria=hoteles"
+              ]
+            },
+            "description": "categoria: hoteles | restaurantes | agencias | all. Tope por categoría (?per_page, máx 50), solo visibles."
+          },
+          "response": []
+        }
+      ],
+      "description": "Agregador de vitrina: hoteles + restaurantes + agencias con foto portada y redes principales."
+    },
+    {
+      "name": "13. Activación y recuperación",
+      "item": [
+        {
+          "name": "Activar cuenta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/password/activar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "password",
+                "activar"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"PEGAR_TOKEN_DEL_CORREO\",\n  \"password\": \"claveSegura1\",\n  \"password_confirmation\": \"claveSegura1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "El token llega al correo (válido 24h, un solo uso). Mínimo 8 caracteres + confirmación."
+          },
+          "response": []
+        },
+        {
+          "name": "Solicitar recuperación",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/password/olvide",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "password",
+                "olvide"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"admin@sogamoso.gov.co\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Respuesta siempre genérica (no revela si el correo existe)."
+          },
+          "response": []
+        },
+        {
+          "name": "Restablecer contraseña",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/password/restablecer",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "password",
+                "restablecer"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"PEGAR_TOKEN_DEL_CORREO\",\n  \"password\": \"nuevaClave99\",\n  \"password_confirmation\": \"nuevaClave99\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Si la cuenta estaba BLOQUEADA, se desbloquea."
+          },
+          "response": []
+        },
+        {
+          "name": "Reenviar activación",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/password/reenviar-activacion",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "password",
+                "reenviar-activacion"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"admin@sogamoso.gov.co\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Solo para cuentas aún EN_VERIFICACION."
+          },
+          "response": []
+        }
+      ],
+      "description": "Crear perfil ya no recibe password: el correo de activación sale solo al registrar."
+    },
+    {
+      "name": "14. Listas admin (tablas de gestión)",
+      "item": [
+        {
+          "name": "Atractivos (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/tourism",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "tourism"
+              ]
+            },
+            "description": "Gestión admin: visibles + ocultos, con contacto e is_visible (columna Estado). Requiere Bearer con permiso del módulo \"Atractivos Turísticos\". Filtros: ?is_visible=true|false, ?page&per_page (máx 50)."
+          },
+          "response": []
+        },
+        {
+          "name": "Hoteles (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/hotel",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "hotel"
+              ]
+            },
+            "description": "Gestión admin: visibles + ocultos, con contacto e is_visible (columna Estado). Requiere Bearer con permiso del módulo \"Prestadores Servicios\". Filtros: ?is_visible=true|false, ?page&per_page (máx 50)."
+          },
+          "response": []
+        },
+        {
+          "name": "Restaurantes (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/restaurant",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "restaurant"
+              ]
+            },
+            "description": "Gestión admin: visibles + ocultos, con contacto e is_visible (columna Estado). Requiere Bearer con permiso del módulo \"Prestadores Servicios\". Filtros: ?is_visible=true|false, ?page&per_page (máx 50)."
+          },
+          "response": []
+        },
+        {
+          "name": "Agencias (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/agency",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "agency"
+              ]
+            },
+            "description": "Gestión admin: visibles + ocultos, con contacto e is_visible (columna Estado). Requiere Bearer con permiso del módulo \"Prestadores Servicios\". Filtros: ?is_visible=true|false, ?page&per_page (máx 50)."
+          },
+          "response": []
+        },
+        {
+          "name": "Guías (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/guide",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "guide"
+              ]
+            },
+            "description": "Gestión admin: visibles + ocultos, con contacto e is_visible (columna Estado). Requiere Bearer con permiso del módulo \"Prestadores Servicios\". Filtros: ?is_visible=true|false, ?page&per_page (máx 50)."
+          },
+          "response": []
+        },
+        {
+          "name": "Eventos (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/event",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "event"
+              ]
+            },
+            "description": "Gestión admin: visibles + ocultos, con contacto e is_visible (columna Estado). Requiere Bearer con permiso del módulo \"Eventos\". Filtros: ?is_visible=true|false, ?page&per_page (máx 50)."
+          },
+          "response": []
+        },
+        {
+          "name": "Servicios culturales (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/cultural-services",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "cultural-services"
+              ]
+            },
+            "description": "Gestión admin: visibles + ocultos, con contacto e is_visible (columna Estado). Requiere Bearer con permiso del módulo \"Servicios Culturales\". Filtros: ?is_visible=true|false, ?page&per_page (máx 50)."
+          },
+          "response": []
+        }
+      ],
+      "description": "Listas de gestión para las tablas del panel admin (Imagen/Nombre/Categoría/Ubicación/Contacto/Estado). Todas exigen Bearer con el permiso del módulo indicado; sin token devuelven 401."
+    },
+    {
+      "name": "15. Respaldo de fotos (superadmin)",
+      "item": [
+        {
+          "name": "Inventario de fotos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/respaldo/fotos/inventario",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "respaldo",
+                "fotos",
+                "inventario"
+              ]
+            },
+            "description": "Cuenta fotos locales por carpeta y tamaño total. Requiere Bearer de Super Administrador. Úsalo antes de descargar."
+          },
+          "response": []
+        },
+        {
+          "name": "Descargar ZIP de fotos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/zip"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/respaldo/fotos",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "respaldo",
+                "fotos"
+              ]
+            },
+            "description": "Descarga ZIP con fotos/{carpeta}/... para copiar a storage/app/public/fotos/ del deploy final. Requiere Bearer de Super Administrador. Sin fotos responde 404."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
