@@ -178,6 +178,15 @@ items = [
         catalog_folder('Público dirigido', 'publico-dirigido', 'Juvenil'),
         raw_req('Listar redes sociales', 'GET', 'redes-sociales', None,
                 'IDs necesarios para el campo redes_sociales de hotel/restaurante/agencia/atractivo.'),
+        folder('Especialidades turisticas (por agencia)', [
+            raw_req('Listar (filtrar ?id_agencia=AGE-001&search=eco)', 'GET', 'especialidades-turistica?id_agencia=AGE-001'),
+            raw_req('Obtener por ID', 'GET', 'especialidades-turistica/1'),
+            raw_req('Crear', 'POST', 'especialidades-turistica/register', {'id_agencia': 'AGE-001', 'nombre': 'Ecoturismo'},
+                    'id_agencia debe existir. UNIQUE por agencia + nombre.'),
+            raw_req('Actualizar', 'PUT', 'especialidades-turistica/1', {'nombre': 'Turismo cultural'},
+                    'Acepta nombre y/o id_agencia. Respeta UNIQUE por agencia + nombre.'),
+            raw_req('Eliminar', 'DELETE', 'especialidades-turistica/1'),
+        ], 'Tabla culturayturismo.especialidad_turistica. El alta/baja masiva sigue en POST/PUT /agency via especialidades[].'),
     ], 'Crear primero los catálogos: las entidades exigen sus IDs por FK.'),
     folder('5. Atractivos turísticos', [
         pub_list('Listar', 'tourism'),

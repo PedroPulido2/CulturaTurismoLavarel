@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "CulturaTurismo API",
-    "_postman_id": "0ca1759f-f51d-4b08-bb6d-2dd55774c9f0",
+    "_postman_id": "c1f29f2f-c5b6-4d02-bd7a-c11f36f6efd3",
     "description": "Colección CRUD de la API CulturaTurismo (esquema culturayturismo).\nOrden sugerido: 1 Auth → 2 Perfiles → 3 Permisos → 4 Catálogos → 5-11 entidades → 14 Admin.\nVitrinas públicas (5-12): solo visibles, campos mínimos, paginadas. Listas admin (14): visibles + ocultos con is_visible, exigen Bearer + permiso del módulo.\nLos campos de archivo (fotos/url_foto/nuevas_fotos) vienen deshabilitados: habilítalos y adjunta una imagen para probar subidas a Drive.\nOtorgar/quitar módulos exige Bearer de un Super Administrador.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
@@ -1201,6 +1201,154 @@
             "description": "IDs necesarios para el campo redes_sociales de hotel/restaurante/agencia/atractivo."
           },
           "response": []
+        },
+        {
+          "name": "Especialidades turisticas (por agencia)",
+          "item": [
+            {
+              "name": "Listar (filtrar ?id_agencia=AGE-001&search=eco)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/especialidades-turistica?id_agencia=AGE-001",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "especialidades-turistica?id_agencia=AGE-001"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Obtener por ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/especialidades-turistica/1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "especialidades-turistica",
+                    "1"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Crear",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/especialidades-turistica/register",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "especialidades-turistica",
+                    "register"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"id_agencia\": \"AGE-001\",\n  \"nombre\": \"Ecoturismo\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "id_agencia debe existir. UNIQUE por agencia + nombre."
+              },
+              "response": []
+            },
+            {
+              "name": "Actualizar",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/especialidades-turistica/1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "especialidades-turistica",
+                    "1"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Turismo cultural\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Acepta nombre y/o id_agencia. Respeta UNIQUE por agencia + nombre."
+              },
+              "response": []
+            },
+            {
+              "name": "Eliminar",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/especialidades-turistica/1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "especialidades-turistica",
+                    "1"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ],
+          "description": "Tabla culturayturismo.especialidad_turistica. El alta/baja masiva sigue en POST/PUT /agency via especialidades[]."
         }
       ],
       "description": "Crear primero los catálogos: las entidades exigen sus IDs por FK."
@@ -3581,62 +3729,6 @@
         }
       ],
       "description": "Listas de gestión para las tablas del panel admin (Imagen/Nombre/Categoría/Ubicación/Contacto/Estado). Todas exigen Bearer con el permiso del módulo indicado; sin token devuelven 401."
-    },
-    {
-      "name": "15. Respaldo de fotos (superadmin)",
-      "item": [
-        {
-          "name": "Inventario de fotos",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/admin/respaldo/fotos/inventario",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "admin",
-                "respaldo",
-                "fotos",
-                "inventario"
-              ]
-            },
-            "description": "Cuenta fotos locales por carpeta y tamaño total. Requiere Bearer de Super Administrador. Úsalo antes de descargar."
-          },
-          "response": []
-        },
-        {
-          "name": "Descargar ZIP de fotos",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/zip"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/admin/respaldo/fotos",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "admin",
-                "respaldo",
-                "fotos"
-              ]
-            },
-            "description": "Descarga ZIP con fotos/{carpeta}/... para copiar a storage/app/public/fotos/ del deploy final. Requiere Bearer de Super Administrador. Sin fotos responde 404."
-          },
-          "response": []
-        }
-      ]
     }
   ]
 }

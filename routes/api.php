@@ -3,6 +3,7 @@
 use App\Http\Controllers\AgenciaController;
 use App\Http\Controllers\ArchivoController;
 use App\Http\Controllers\AtractivoTuristicoController;
+use App\Http\Controllers\EspecialidadTuristicaController;
 use App\Http\Controllers\EventoController;
 use App\Http\Controllers\GuiaController;
 use App\Http\Controllers\HotelController;
@@ -120,6 +121,15 @@ Route::delete('/tipos-cocina/{id}', [RestauranteController::class, 'deleteTipoCo
 Route::get('/tipos-agencia', [AgenciaController::class, 'getTiposAgencia']);
 Route::post('/tipos-agencia/register', [AgenciaController::class, 'createTipoAgencia'])->middleware('modulo:Prestadores Servicios');
 Route::delete('/tipos-agencia/{id}', [AgenciaController::class, 'deleteTipoAgencia'])->middleware('modulo:Prestadores Servicios');
+
+// Especialidades turísticas propias de agencia (tabla culturayturismo.especialidad_turistica).
+// Lectura pública; escritura con permiso de Prestadores Servicios.
+// El alta/baja masiva sigue disponible vía `especialidades[]` en POST/PUT /agency.
+Route::get('/especialidades-turistica', [EspecialidadTuristicaController::class, 'getEspecialidadesTuristicas']);
+Route::get('/especialidades-turistica/{id}', [EspecialidadTuristicaController::class, 'getEspecialidadTuristicaById']);
+Route::post('/especialidades-turistica/register', [EspecialidadTuristicaController::class, 'createEspecialidadTuristica'])->middleware('modulo:Prestadores Servicios');
+Route::put('/especialidades-turistica/{id}', [EspecialidadTuristicaController::class, 'updateEspecialidadTuristica'])->middleware('modulo:Prestadores Servicios');
+Route::delete('/especialidades-turistica/{id}', [EspecialidadTuristicaController::class, 'deleteEspecialidadTuristica'])->middleware('modulo:Prestadores Servicios');
 
 Route::get('/especialidades', [GuiaController::class, 'getEspecialidades']);
 Route::post('/especialidades/register', [GuiaController::class, 'createEspecialidad'])->middleware('modulo:Prestadores Servicios');
