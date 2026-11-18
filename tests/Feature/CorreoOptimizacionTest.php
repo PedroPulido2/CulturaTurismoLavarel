@@ -18,15 +18,15 @@ class CorreoOptimizacionTest extends TestCase
         $this->assertNull(CorreoService::logoUrl());
     }
 
-    public function test_logo_url_remota_con_dominio_publico(): void
+    public function test_logo_url_prefiere_embed_aunque_dominio_sea_publico(): void
     {
+        // APP_URL puede apuntar al frontend (ej. Vercel) y ese host no sirve
+        // los assets de public/ del backend (404 -> imagen rota). Por eso,
+        // sin MAIL_LOGO_URL explícito siempre se incrusta (embed CID).
         config(['app.url' => 'https://cultura.example.com']);
         config(['mail.logo_url' => null]);
 
-        $this->assertSame(
-            'https://cultura.example.com/escudoLogo-mail.png',
-            CorreoService::logoUrl()
-        );
+        $this->assertNull(CorreoService::logoUrl());
     }
 
     public function test_logo_url_respeta_override(): void
@@ -57,12 +57,13 @@ class CorreoOptimizacionTest extends TestCase
 
         $html = $mailable->render();
 
-        $this->assertStringContainsString('<img src="', $html);
-        // Incrustada: data URI en previsualización, cid: al enviar de verdad.
-        $this->assertTrue(str_contains($html, 'cid:') || str_contains($html, 'data:image/'));
+        // La plantilla actual no incluye imagen: solo texto institucional.
+        $this->assertStringContainsString('Activar mi cuenta', $html);
+        $this->assertStringContainsString('https://front.test/activar-cuenta?token=abc', $html);
+        $this->assertStringNotContainsString('<img', $html);
     }
 
-    public function test_mailable_usa_remota_con_url_publica(): void
+    public function test_mailable_ignora_logo_remoto_sin_imagen_en_plantilla(): void
     {
         $mailable = new RestablecerPassword('Ana', 'https://front.test/restablecer-password?token=abc', 'https://cdn.example.com/logo.png');
 
@@ -71,7 +72,8 @@ class CorreoOptimizacionTest extends TestCase
 
         $html = $mailable->render();
 
-        $this->assertStringContainsString('https://cdn.example.com/logo.png', $html);
+        $this->assertStringContainsString('Restablecer', $html);
+        $this->assertStringNotContainsString('<img', $html);
         $this->assertStringNotContainsString('cid:', $html);
     }
 

@@ -105,8 +105,10 @@ return [
     |--------------------------------------------------------------------------
     |
     | URL absoluta del logo liviano usado en las plantillas. Si se deja
-    | vacío se arma con APP_URL + /escudoLogo-mail.png, y si el host no
-    | es público (ej. localhost) se incrusta el archivo en su lugar.
+    | vacío se incrusta el archivo public/escudoLogo-mail.png (embed CID),
+    | que siempre se muestra. Solo configúrala si tienes el logo en un
+    | host público que sí sirva el archivo (APP_URL apunta al frontend
+    | y no sirve los assets del backend).
     |
     */
 

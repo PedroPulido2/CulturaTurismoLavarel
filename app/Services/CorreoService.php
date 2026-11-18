@@ -12,9 +12,12 @@ class CorreoService
 {
     /**
      * URL pública absoluta del logo liviano (public/escudoLogo-mail.png).
-     * Retorna null cuando no hay URL pública utilizable (ej. APP_URL en
-     * localhost, que ningún cliente de correo puede resolver): en ese caso
-     * las plantillas incrustan el archivo (embed), que siempre se muestra.
+     * Por defecto retorna null para que las plantillas incrusten el archivo
+     * (embed CID), que siempre se muestra: la URL armada con APP_URL no es
+     * confiable porque APP_URL apunta al frontend (Vercel) y ese host no
+     * sirve los assets de public/ del backend (devuelve 404 -> imagen rota).
+     * Solo se usa URL remota si se configura explícitamente vía
+     * MAIL_LOGO_URL o por override.
      */
     public static function logoUrl(?string $override = null): ?string
     {
@@ -27,18 +30,7 @@ class CorreoService
             return $directa;
         }
 
-        $base = rtrim((string) config('app.url', 'http://localhost'), '/');
-        $url = $base.'/escudoLogo-mail.png';
-
-        if (! self::esHostPublico($url)) {
-            return null;
-        }
-
-        if (! is_file(public_path('escudoLogo-mail.png'))) {
-            return null;
-        }
-
-        return $url;
+        return null;
     }
 
     /**
@@ -55,26 +47,6 @@ class CorreoService
         }
 
         return null;
-    }
-
-    private static function esHostPublico(string $url): bool
-    {
-        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
-
-        if ($host === '' || $host === 'localhost') {
-            return false;
-        }
-
-        if (filter_var($host, FILTER_VALIDATE_IP)) {
-            return filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false;
-        }
-
-        // Nombres de un solo segmento (mailpit, app, ...) son red local.
-        if (! str_contains($host, '.')) {
-            return false;
-        }
-
-        return true;
     }
 
     public function enviarActivacion(string $correo, string $nombre, string $url, ?string $logoUrl = null): bool
