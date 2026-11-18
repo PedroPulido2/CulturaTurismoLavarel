@@ -127,6 +127,17 @@ items = [
         ),
         raw_req('Desbloquear usuario', 'POST', 'login/unlock/1', None,
                 'Pasa el id_usuario. Solo si la cuenta está BLOQUEADA.'),
+        raw_req('Cerrar sesión', 'POST', 'logout', None,
+                'Exige Bearer. Registra LOGOUT_EXITOSO en auditoría (módulo Auth). '
+                'El JWT es stateless: tras el 200 borra {{jwt}} en el front.',
+                events=[{'listen': 'test', 'script': {
+                    'type': 'text/javascript',
+                    'exec': [
+                        'if (pm.response.code === 200) {',
+                        "  pm.collectionVariables.unset('jwt');",
+                        '}',
+                    ],
+                }}]),
     ]),
     folder('2. Perfiles (usuario + login)', [
         raw_req('Listar perfiles', 'GET', 'profiles'),

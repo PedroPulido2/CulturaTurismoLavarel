@@ -22,6 +22,9 @@ use Illuminate\Support\Facades\Route;
 // RUTAS DE AUTENTICACIÓN (LoginController)
 // ==========================================
 Route::post('/login', [LoginController::class, 'login']);
+// Cierre de sesión: exige Bearer válido y registra LOGOUT_EXITOSO en auditoría.
+// El JWT es stateless: el front debe borrar el token local tras el 200.
+Route::post('/logout', [LoginController::class, 'logout'])->middleware('auth.jwt');
 // Desbloqueo de cuentas: solo Super Administrador (evita bypass del lockout).
 Route::post('/login/unlock/{id_usuario}', [LoginController::class, 'unlockUser'])->middleware('superadmin');
 

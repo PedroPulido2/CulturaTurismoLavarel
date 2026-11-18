@@ -93,4 +93,22 @@ class LoginController extends Controller
 
         return response()->json(['success' => true, 'message' => 'Usuario desbloqueado exitosamente'], 200);
     }
+
+    public function logout(Request $request)
+    {
+        // El middleware auth.jwt ya validó el token e inyectó auth_user_id.
+        // El JWT es stateless (sin blacklist): el cierre efectivo lo hace el
+        // front borrando el token; aquí queda el rastro en auditoría.
+        $idUsuario = $request->attributes->get('auth_user_id');
+
+        $usuario = $idUsuario !== null
+            ? Usuario::where('id_usuario', $idUsuario)->first(['nombre', 'apellido'])
+            : null;
+
+        $nombre = $usuario ? trim("{$usuario->nombre} {$usuario->apellido}") : 'Un usuario';
+
+        $this->audit->registrarPara($idUsuario, 'Auth', 'LOGOUT_EXITOSO', 'OK', "{$nombre} cerró sesión en el sistema.", $request);
+
+        return response()->json(['success' => true, 'message' => 'Sesión cerrada correctamente'], 200);
+    }
 }

@@ -41,6 +41,12 @@ class SecurityAccessTest extends TestCase
         $this->getJson('/api/modulos')->assertStatus(401);
     }
 
+    public function test_logout_sin_token_es_401(): void
+    {
+        // El cierre de sesión exige Bearer válido (y registra LOGOUT_EXITOSO).
+        $this->postJson('/api/logout')->assertStatus(401);
+    }
+
     public function test_token_con_secreto_incorrecto_es_401(): void
     {
         $jwt = new JwtService('secreto-correcto-para-pruebas-1234567890ABCD');

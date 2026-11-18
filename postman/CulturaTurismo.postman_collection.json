@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "CulturaTurismo API",
-    "_postman_id": "c1f29f2f-c5b6-4d02-bd7a-c11f36f6efd3",
+    "_postman_id": "a3ddbbcd-4087-43f0-9086-f79d877969ad",
     "description": "Colección CRUD de la API CulturaTurismo (esquema culturayturismo).\nOrden sugerido: 1 Auth → 2 Perfiles → 3 Permisos → 4 Catálogos → 5-11 entidades → 14 Admin.\nVitrinas públicas (5-12): solo visibles, campos mínimos, paginadas. Listas admin (14): visibles + ocultos con is_visible, exigen Bearer + permiso del módulo.\nLos campos de archivo (fotos/url_foto/nuevas_fotos) vienen deshabilitados: habilítalos y adjunta una imagen para probar subidas a Drive.\nOtorgar/quitar módulos exige Bearer de un Super Administrador.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
@@ -103,6 +103,42 @@
             "description": "Pasa el id_usuario. Solo si la cuenta está BLOQUEADA."
           },
           "response": []
+        },
+        {
+          "name": "Cerrar sesión",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "logout"
+              ]
+            },
+            "description": "Exige Bearer. Registra LOGOUT_EXITOSO en auditoría (módulo Auth). El JWT es stateless: tras el 200 borra {{jwt}} en el front."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  pm.collectionVariables.unset('jwt');",
+                  "}"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
