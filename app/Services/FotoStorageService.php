@@ -24,8 +24,13 @@ class FotoStorageService
         'perfiles',
     ];
 
+    public function __construct(private GoogleDriveService $drive) {}
+
     /**
-     * Guarda una foto subida en el disco público local y retorna su URL pública absoluta.
+     * Guarda una foto y retorna su URL pública.
+     * Con FOTOS_DRIVER=drive sube a la carpeta Drive de la entidad;
+     * si no, al disco público local. El nombre generado es el mismo
+     * en ambos casos para que la migración sea 1:1.
      */
     public function guardar(UploadedFile $archivo, string $carpeta, string $base): string
     {
@@ -35,6 +40,25 @@ class FotoStorageService
 
         $extension = strtolower(ltrim($archivo->getClientOriginalExtension() ?: 'jpg', '.')) ?: 'jpg';
         $nombre = Str::slug($base).'_'.(string) Str::uuid().'.'.$extension;
+
+        if (config('fotos.driver', 'local') === 'drive') {
+            $idCarpeta = config("fotos.carpetas.{$carpeta}");
+
+            if (! is_string($idCarpeta) || $idCarpeta === '') {
+                throw new InvalidArgumentException("Sin carpeta Drive configurada para: {$carpeta}");
+            }
+
+            $resultado = $this->drive->subirArchivo(
+                $archivo->getRealPath(),
+                $archivo->getMimeType() ?: 'application/octet-stream',
+                $nombre,
+                $idCarpeta
+            );
+            $this->drive->compartirEnlace($resultado['id']);
+
+            return $resultado['link'];
+        }
+
         $relativa = "fotos/{$carpeta}/{$nombre}";
 
         Storage::disk('public')->put($relativa, file_get_contents($archivo->getRealPath()));
@@ -43,11 +67,18 @@ class FotoStorageService
     }
 
     /**
-     * Elimina una foto local a partir de su URL. Acepta null, URLs
+     * Elimina una foto a partir de su URL. Acepta null, URLs
      * externas o rutas inexistentes sin lanzar excepciones.
+     * Las URLs de Drive se borran en Drive, las locales en disco.
      */
     public function eliminar(?string $url): void
     {
+        if ($this->esUrlDrive($url)) {
+            $this->drive->deleteFromDrive($url);
+
+            return;
+        }
+
         $relativa = $this->relativaDesdeUrl($url);
 
         if ($relativa === null) {
@@ -61,6 +92,11 @@ class FotoStorageService
         } catch (\Exception $e) {
             Log::error('Error eliminando foto local: '.$e->getMessage());
         }
+    }
+
+    public function esUrlDrive(?string $url): bool
+    {
+        return is_string($url) && str_contains($url, 'drive.google.com');
     }
 
     /**

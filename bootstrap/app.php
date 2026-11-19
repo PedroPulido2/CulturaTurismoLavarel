@@ -1,5 +1,7 @@
 <?php
 
+use App\Console\Commands\MigrarDriveALocal;
+use App\Console\Commands\MigrarLocalADrive;
 use App\Console\Commands\ReescribirUrlFotos;
 use App\Http\Middleware\AuditLogMiddleware;
 use App\Http\Middleware\AuthenticateJwt;
@@ -33,5 +35,7 @@ return Application::configure(basePath: dirname(__DIR__))
         //
     })
     ->withCommands([
+        MigrarDriveALocal::class,
+        MigrarLocalADrive::class,
         ReescribirUrlFotos::class,
     ])->create();

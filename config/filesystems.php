@@ -60,6 +60,13 @@ return [
             'report' => false,
         ],
 
+        'google' => [
+            'driver' => 'google',
+            'clientId' => env('CLIENT_ID'),
+            'clientSecret' => env('CLIENT_SECRET'),
+            'refreshToken' => env('REFRESH_TOKEN'),
+        ],
+
     ],
 
     /*
