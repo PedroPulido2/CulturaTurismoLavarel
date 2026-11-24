@@ -45,6 +45,7 @@ class AuditLogMiddleware
         'publico-dirigido' => ['Servicios Culturales', 'PUBLICO_DIRIGIDO', 'el público dirigido'],
         'event' => ['Eventos', 'EVENTO', 'el evento'],
         'archivos' => ['Gestor Archivos', 'ARCHIVO', 'el archivo'],
+        'carpetas' => ['Gestor Archivos', 'CARPETA', 'la carpeta'],
         'profiles' => ['Perfiles', 'PERFIL', 'el perfil'],
     ];
 

@@ -49,12 +49,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && a2enmod rewrite headers \
     && rm -rf /var/lib/apt/lists/*
 
-# php.ini de producción: uploads (fotos max 5MB) + opcache
+# php.ini de producción: debe cubrir el MAX_KB del gestor (2 GB) + holgura multipart
 RUN { \
-      echo 'memory_limit=256M'; \
-      echo 'upload_max_filesize=10M'; \
-      echo 'post_max_size=12M'; \
-      echo 'max_execution_time=60'; \
+      echo 'memory_limit=1G'; \
+      echo 'upload_max_filesize=2050M'; \
+      echo 'post_max_size=2070M'; \
+      echo 'max_execution_time=1800'; \
+      echo 'max_input_time=1800'; \
       echo 'expose_php=Off'; \
       echo 'opcache.enable=1'; \
       echo 'opcache.enable_cli=1'; \

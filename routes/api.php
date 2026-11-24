@@ -3,6 +3,7 @@
 use App\Http\Controllers\AgenciaController;
 use App\Http\Controllers\ArchivoController;
 use App\Http\Controllers\AtractivoTuristicoController;
+use App\Http\Controllers\CarpetaController;
 use App\Http\Controllers\EspecialidadTuristicaController;
 use App\Http\Controllers\EventoController;
 use App\Http\Controllers\GuiaController;
@@ -153,14 +154,21 @@ Route::get('/prestadores-turisticos', [PrestadoresPublicoController::class, 'get
 Route::get('/redes-sociales', [PrestadoresPublicoController::class, 'getRedesSociales']);
 
 // ==========================================
-// GESTOR DE ARCHIVOS (carpeta única global en storage/app/private/archivos)
+// GESTOR DE ARCHIVOS (raíz storage/app/private/archivos + carpetas anidadas)
 // Solo usuarios logueados (auth.jwt): el front sube con multipart/form-data
 // y descarga por estas rutas, sin URLs públicas.
+// Archivos: ?carpeta= ruta ('' = raíz, compatible con lo anterior).
+// Carpetas: CRUD anidado, borrado solo si vacía.
 // ==========================================
 Route::get('/archivos', [ArchivoController::class, 'index'])->middleware('auth.jwt');
 Route::post('/archivos', [ArchivoController::class, 'store'])->middleware('auth.jwt');
 Route::get('/archivos/{nombre}/descargar', [ArchivoController::class, 'descargar'])->middleware('auth.jwt')->where('nombre', '[^/]+');
 Route::delete('/archivos/{nombre}', [ArchivoController::class, 'destroy'])->middleware('auth.jwt')->where('nombre', '[^/]+');
+
+Route::get('/carpetas', [CarpetaController::class, 'index'])->middleware('auth.jwt');
+Route::post('/carpetas', [CarpetaController::class, 'store'])->middleware('auth.jwt');
+Route::put('/carpetas/{ruta}', [CarpetaController::class, 'update'])->middleware('auth.jwt')->where('ruta', '.+');
+Route::delete('/carpetas/{ruta}', [CarpetaController::class, 'destroy'])->middleware('auth.jwt')->where('ruta', '.+');
 
 // ==========================================
 // RUTAS DE Servicios Culturales / cultural-services (módulo 3)
